@@ -10,6 +10,7 @@ export default function HomePage() {
       <nav className={styles.nav}>
         <Link href="/catalog">Voir le catalogue public</Link>
         <Link href="/login">Se connecter</Link>
+        <Link href="/seller/articles/new">Creer une annonce seller</Link>
       </nav>
     </main>
   );
