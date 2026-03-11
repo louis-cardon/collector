@@ -12,6 +12,12 @@ enum Role {
   admin
 }
 
+enum ArticleStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -19,12 +25,32 @@ model User {
   role         Role
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  articles     Article[] @relation("SellerArticles")
 }
 
-// Will be referenced by Article.categoryId in the next iteration.
 model Category {
   id        String   @id @default(cuid())
   name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  articles  Article[]
+}
+
+model Article {
+  id           String        @id @default(cuid())
+  title        String
+  description  String
+  price        Decimal       @db.Decimal(10, 2)
+  shippingCost Decimal       @db.Decimal(10, 2)
+  status       ArticleStatus @default(PENDING_REVIEW)
+  sellerId     String
+  categoryId   String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  seller       User          @relation("SellerArticles", fields: [sellerId], references: [id], onDelete: Restrict)
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([sellerId])
+  @@index([categoryId])
+  @@index([status])
 }
