@@ -16,6 +16,8 @@ const DEMO_USERS = [
   },
 ];
 
+const DEMO_CATEGORIES = ['Cartes', 'Figurines', 'Comics'];
+
 async function main() {
   for (const user of DEMO_USERS) {
     const passwordHash = await bcrypt.hash(user.password, 10);
@@ -34,7 +36,15 @@ async function main() {
     });
   }
 
-  console.log('Seed completed: seller and admin users are ready.');
+  for (const name of DEMO_CATEGORIES) {
+    await prisma.category.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+
+  console.log('Seed completed: users and demo categories are ready.');
 }
 
 main()

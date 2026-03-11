@@ -1,16 +1,16 @@
-import { ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import request from 'supertest';
-import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { AuthUserDto } from '../src/auth/dto/auth-user.dto';
 import { LoginResponseDto } from '../src/auth/dto/login-response.dto';
 import { UsersService } from '../src/users/users.service';
 
 describe('Auth API (integration)', () => {
-  let app: import('@nestjs/common').INestApplication<App>;
+  let app: INestApplication;
+  let httpApp: Parameters<typeof request>[0];
 
   const sellerUser: User = {
     id: 'seller-id',
@@ -69,6 +69,13 @@ describe('Auth API (integration)', () => {
     );
 
     await app.init();
+    const expressApp = app.getHttpAdapter().getInstance() as (
+      req: unknown,
+      res: unknown,
+    ) => void;
+    httpApp = ((req, res) => expressApp(req, res)) as Parameters<
+      typeof request
+    >[0];
   });
 
   afterAll(async () => {
@@ -81,7 +88,7 @@ describe('Auth API (integration)', () => {
   });
 
   it('POST /auth/login returns token when credentials are valid', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(httpApp)
       .post('/auth/login')
       .send({ email: sellerUser.email, password: 'Seller123!' })
       .expect(200);
@@ -97,14 +104,14 @@ describe('Auth API (integration)', () => {
   });
 
   it('POST /auth/login returns 401 when credentials are invalid', async () => {
-    await request(app.getHttpServer())
+    await request(httpApp)
       .post('/auth/login')
       .send({ email: sellerUser.email, password: 'WrongPassword!' })
       .expect(401);
   });
 
   it('GET /auth/me returns user when token is valid', async () => {
-    const loginResponse = await request(app.getHttpServer())
+    const loginResponse = await request(httpApp)
       .post('/auth/login')
       .send({ email: adminUser.email, password: 'Admin123!' })
       .expect(200);
@@ -112,7 +119,7 @@ describe('Auth API (integration)', () => {
     const loginBody = loginResponse.body as LoginResponseDto;
     const token = loginBody.accessToken;
 
-    const meResponse = await request(app.getHttpServer())
+    const meResponse = await request(httpApp)
       .get('/auth/me')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
@@ -127,6 +134,6 @@ describe('Auth API (integration)', () => {
   });
 
   it('GET /auth/me returns 401 when token is missing', async () => {
-    await request(app.getHttpServer()).get('/auth/me').expect(401);
+    await request(httpApp).get('/auth/me').expect(401);
   });
 });
