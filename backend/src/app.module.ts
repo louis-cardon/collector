@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AdminModule } from './admin/admin.module';
 import { ArticlesModule } from './articles/articles.module';
 import { AuthModule } from './auth/auth.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { CategoriesModule } from './categories/categories.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -35,6 +36,7 @@ import { PrismaModule } from './prisma/prisma.module';
     CategoriesModule,
     ArticlesModule,
     AdminModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [AppService],
