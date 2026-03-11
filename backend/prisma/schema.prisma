@@ -7,4 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Business models are intentionally omitted at bootstrap stage.
+enum Role {
+  seller
+  admin
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

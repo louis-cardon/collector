@@ -78,7 +78,6 @@ Ce projet est volontairement limité à un périmètre réduit mais cohérent, a
 ├─ README.md
 ├─ .gitignore
 ├─ package.json
-├─ .env.example
 ├─ docs/
 ├─ frontend/
 ├─ backend/
@@ -90,8 +89,38 @@ Ce projet est volontairement limité à un périmètre réduit mais cohérent, a
 
 ```bash
 npm install
-cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+docker compose up -d
+npm run prisma:migrate:deploy -w backend
+npm run prisma:seed -w backend
 npm run dev
+```
+
+## Variables d’environnement
+
+- backend : fichier local attendu `backend/.env`
+- frontend : fichier local attendu `frontend/.env.local`
+
+Exemples fournis :
+- `backend/.env.example`
+- `frontend/.env.example`
+
+## PostgreSQL local (Docker Compose)
+
+Le monorepo fournit un `compose.yaml` à la racine avec un service PostgreSQL 16.
+
+```bash
+docker compose up -d
+docker compose down
+```
+
+Utilisation avec Prisma (backend) :
+
+```bash
+npm run prisma:generate -w backend
+npm run prisma:migrate:deploy -w backend
+npm run prisma:seed -w backend
 ```
 
 ## Scripts racine
