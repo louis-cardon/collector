@@ -1,9 +1,3 @@
-
----
-
-## `.gitignore`
-
-```gitignore
 # OS
 .DS_Store
 Thumbs.db
@@ -43,6 +37,7 @@ tmp/
 
 # Next.js
 .next/
+.swc/
 
 # NestJS / TypeScript
 *.tsbuildinfo

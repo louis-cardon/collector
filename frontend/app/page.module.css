@@ -1,0 +1,23 @@
+.page {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+  margin: 0 auto;
+  max-width: 48rem;
+  padding: 2rem;
+}
+
+.page h1 {
+  font-size: 2.25rem;
+}
+
+.page p {
+  font-size: 1.125rem;
+}
+
+.page ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}

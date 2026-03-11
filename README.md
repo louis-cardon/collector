@@ -84,3 +84,22 @@ Ce projet est volontairement limité à un périmètre réduit mais cohérent, a
 ├─ backend/
 └─ .github/
    └─ workflows/
+```
+
+## Démarrage
+
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
+
+## Scripts racine
+
+- `npm run dev` : lance Next.js + NestJS en parallèle
+- `npm run build` : build de tous les workspaces
+- `npm run lint` : lint de tous les workspaces
+- `npm run test` : tests unitaires/intégration de tous les workspaces
+- `npm run test:coverage` : couverture de tests
+- `npm run test:e2e` : tests e2e API backend (Supertest)
+- `npm run test:e2e:playwright` : socle e2e Playwright frontend
