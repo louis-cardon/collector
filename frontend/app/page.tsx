@@ -1,15 +1,16 @@
+import Link from "next/link";
 import styles from "./page.module.css";
 
-export default function Home() {
+export default function HomePage() {
   return (
     <main className={styles.page}>
       <h1>Collector.shop</h1>
-      <p>Socle initial du prototype v1.</p>
-      <ul>
-        <li>Frontend: Next.js + TypeScript + App Router</li>
-        <li>Backend: NestJS + TypeScript + Prisma</li>
-        <li>Tests: Jest, Supertest, Playwright</li>
-      </ul>
+      <p>Prototype v1 - frontend minimal connecte au backend.</p>
+
+      <nav className={styles.nav}>
+        <Link href="/catalog">Voir le catalogue public</Link>
+        <Link href="/login">Se connecter</Link>
+      </nav>
     </main>
   );
 }

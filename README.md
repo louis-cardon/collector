@@ -106,6 +106,16 @@ Exemples fournis :
 - `backend/.env.example`
 - `frontend/.env.example`
 
+## Proxy frontend -> backend (dev)
+
+En développement, Next.js proxy les routes frontend `/api/*` vers le backend
+`http://127.0.0.1:3001/*` via `frontend/next.config.ts`.
+
+Conséquence :
+- le navigateur appelle uniquement des routes relatives (`/api/catalog`, `/api/categories`, `/api/auth/login`, etc.) ;
+- les appels frontend n’exposent plus directement l’URL backend publique ;
+- les problèmes CORS entre tunnels 3000/3001 sont évités côté navigateur.
+
 ## PostgreSQL local (Docker Compose)
 
 Le monorepo fournit un `compose.yaml` à la racine avec un service PostgreSQL 16.
