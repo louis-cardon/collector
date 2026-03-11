@@ -1,5 +1,5 @@
 import { ArticleStatus } from '@prisma/client';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ArticleResponseDto {
   @ApiProperty()
@@ -25,6 +25,12 @@ export class ArticleResponseDto {
 
   @ApiProperty()
   categoryId!: string;
+
+  @ApiPropertyOptional()
+  reviewedAt!: Date | null;
+
+  @ApiPropertyOptional()
+  reviewedBy!: string | null;
 
   @ApiProperty()
   createdAt!: Date;

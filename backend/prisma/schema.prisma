@@ -19,13 +19,14 @@ enum ArticleStatus {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  role         Role
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  articles     Article[] @relation("SellerArticles")
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  role            Role
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  articles        Article[] @relation("SellerArticles")
+  reviewedArticles Article[] @relation("ReviewerArticles")
 }
 
 model Category {
@@ -45,12 +46,16 @@ model Article {
   status       ArticleStatus @default(PENDING_REVIEW)
   sellerId     String
   categoryId   String
+  reviewedAt   DateTime?
+  reviewedBy   String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   seller       User          @relation("SellerArticles", fields: [sellerId], references: [id], onDelete: Restrict)
+  reviewer     User?         @relation("ReviewerArticles", fields: [reviewedBy], references: [id], onDelete: SetNull)
   category     Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   @@index([sellerId])
   @@index([categoryId])
+  @@index([reviewedBy])
   @@index([status])
 }

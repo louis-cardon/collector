@@ -98,6 +98,8 @@ describe('Articles API (integration)', () => {
             status: data.status,
             sellerId: data.sellerId,
             categoryId: data.categoryId,
+            reviewedAt: null,
+            reviewedBy: null,
             createdAt: now,
             updatedAt: now,
           };
