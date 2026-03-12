@@ -43,7 +43,6 @@ jobs:
           --health-retries 5
 
     env:
-      NODE_ENV: production
       PORT: 3001
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/collector?schema=public
       JWT_SECRET: performance-jwt-secret
@@ -78,7 +77,7 @@ jobs:
 
       - name: Start backend
         run: |
-          npm run start:prod -w backend > backend.log 2>&1 &
+          NODE_ENV=production npm run start:prod -w backend > backend.log 2>&1 &
           echo $! > backend.pid
 
       - name: Wait for backend readiness
