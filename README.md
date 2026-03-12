@@ -159,11 +159,19 @@ Jobs :
   - `npm audit` (seuil `high`)
 - `sonarqube-analysis` :
   - exécution conditionnelle si secrets Sonar présents
+  - attend le `Quality Gate` SonarQube (échec du job si gate en échec)
 - `playwright-smoke` :
   - job manuel (`workflow_dispatch`)
 
 Secrets GitHub optionnels (SonarQube) :
 - `SONAR_TOKEN`
 - `SONAR_HOST_URL`
+
+Configuration recommandée des secrets dans le repository GitHub :
+- `SONAR_TOKEN` : token d’analyse généré côté SonarQube (scope analyse de projet)
+- `SONAR_HOST_URL` : URL de votre serveur SonarQube (ex. `https://sonar.example.com`)
+
+Note :
+- `GITHUB_TOKEN` est fourni automatiquement par GitHub Actions et utilisé pour le contexte PR.
 
 Sans ces deux secrets, le job SonarQube est ignoré.
