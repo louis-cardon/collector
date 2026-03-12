@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 BASE_URL="${1:-http://127.0.0.1:3001}"
 USERS="${2:-20}"
@@ -14,8 +14,101 @@ SELLER_PASSWORD="${SELLER_PASSWORD:-Seller123!}"
 
 SUMMARY_MD="${RESULTS_DIR}/summary.md"
 SUMMARY_CSV="${RESULTS_DIR}/summary.csv"
+SCENARIO_STATUS_TSV="${RESULTS_DIR}/scenarios-status.tsv"
+RUN_LOG="${RESULTS_DIR}/run.log"
+
+FAILED_SCENARIOS=0
+TOTAL_SCENARIOS=0
 
 mkdir -p "${RESULTS_DIR}"
+exec > >(tee -a "${RUN_LOG}") 2>&1
+
+log() {
+  printf '[%s] %s\n' "$(date -u +"%Y-%m-%d %H:%M:%S UTC")" "$*"
+}
+
+extract_metric() {
+  local label="$1"
+  local file="$2"
+  local line value
+
+  line="$(grep -E "^${label}:" "${file}" | head -n1 || true)"
+  value="$(echo "${line}" | sed -E "s/^${label}:[[:space:]]*//" | xargs || true)"
+
+  if [[ -n "${value}" ]]; then
+    echo "${value}"
+  else
+    echo "n/a"
+  fi
+}
+
+record_summary() {
+  local scenario="$1"
+  local exit_code="$2"
+  local output_file="$3"
+  local availability failed_transactions response_time
+
+  availability="$(extract_metric "Availability" "${output_file}")"
+  failed_transactions="$(extract_metric "Failed transactions" "${output_file}")"
+  response_time="$(extract_metric "Response time" "${output_file}")"
+
+  echo "| ${scenario} | ${exit_code} | ${availability} | ${failed_transactions} | ${response_time} |" >> "${SUMMARY_MD}"
+  echo "${scenario},${exit_code},\"${availability}\",\"${failed_transactions}\",\"${response_time}\"" >> "${SUMMARY_CSV}"
+  printf "%s\t%s\t%s\t%s\t%s\n" "${scenario}" "${exit_code}" "${availability}" "${failed_transactions}" "${response_time}" >> "${SCENARIO_STATUS_TSV}"
+}
+
+mark_failure_if_needed() {
+  local scenario="$1"
+  local exit_code="$2"
+
+  if [[ "${exit_code}" -ne 0 ]]; then
+    FAILED_SCENARIOS=$((FAILED_SCENARIOS + 1))
+    log "Scenario failed: ${scenario} (exit code ${exit_code})"
+  fi
+}
+
+run_siege_and_record() {
+  local scenario="$1"
+  local display_command="$2"
+  shift 2
+  local output_file="${RESULTS_DIR}/${scenario}.log"
+  local exit_code=0
+
+  TOTAL_SCENARIOS=$((TOTAL_SCENARIOS + 1))
+  log "Running scenario: ${scenario}"
+  log "Command: ${display_command}"
+
+  siege "$@" > "${output_file}" 2>&1
+  exit_code=$?
+
+  log "Scenario ${scenario} finished with exit code ${exit_code}"
+  log "Scenario output: ${output_file}"
+
+  if [[ "${exit_code}" -ne 0 ]]; then
+    log "Last scenario log lines for ${scenario}:"
+    tail -n 40 "${output_file}" || true
+  fi
+
+  record_summary "${scenario}" "${exit_code}" "${output_file}"
+  mark_failure_if_needed "${scenario}" "${exit_code}"
+}
+
+record_non_siege_failure() {
+  local scenario="$1"
+  local exit_code="$2"
+  local message="$3"
+  local output_file="${RESULTS_DIR}/${scenario}.log"
+
+  TOTAL_SCENARIOS=$((TOTAL_SCENARIOS + 1))
+  printf "%s\n" "${message}" > "${output_file}"
+  record_summary "${scenario}" "${exit_code}" "${output_file}"
+  mark_failure_if_needed "${scenario}" "${exit_code}"
+}
+
+if [[ ! -f "${PUBLIC_ENDPOINTS_FILE}" ]]; then
+  log "Missing endpoints file: ${PUBLIC_ENDPOINTS_FILE}"
+  exit 1
+fi
 
 cat > "${SUMMARY_MD}" <<EOF
 # Resultats des tests de charge
@@ -24,63 +117,34 @@ cat > "${SUMMARY_MD}" <<EOF
 - Base URL: ${BASE_URL}
 - Siege users: ${USERS}
 - Siege duration: ${DURATION}
+- Script log: ${RUN_LOG}
 
-| Scenario | Availability | Response time | Transaction rate | Failed transactions | Longest transaction |
-|---|---:|---:|---:|---:|---:|
+| Scenario | Exit code | Availability | Failed transactions | Response time |
+|---|---:|---:|---:|---:|
 EOF
 
-echo 'scenario,availability,response_time,transaction_rate,failed_transactions,longest_transaction' > "${SUMMARY_CSV}"
-
-extract_metric() {
-  local label="$1"
-  local file="$2"
-  grep -E "^${label}:" "${file}" | head -n1 | sed -E "s/^${label}:[[:space:]]*//" | xargs
-}
-
-append_summary_line() {
-  local scenario="$1"
-  local file="$2"
-  local availability response_time transaction_rate failed_transactions longest_transaction
-
-  availability="$(extract_metric "Availability" "${file}")"
-  response_time="$(extract_metric "Response time" "${file}")"
-  transaction_rate="$(extract_metric "Transaction rate" "${file}")"
-  failed_transactions="$(extract_metric "Failed transactions" "${file}")"
-  longest_transaction="$(extract_metric "Longest transaction" "${file}")"
-
-  echo "| ${scenario} | ${availability:-n/a} | ${response_time:-n/a} | ${transaction_rate:-n/a} | ${failed_transactions:-n/a} | ${longest_transaction:-n/a} |" >> "${SUMMARY_MD}"
-  echo "${scenario},\"${availability:-n/a}\",\"${response_time:-n/a}\",\"${transaction_rate:-n/a}\",\"${failed_transactions:-n/a}\",\"${longest_transaction:-n/a}\"" >> "${SUMMARY_CSV}"
-}
-
-run_siege_and_record() {
-  local scenario="$1"
-  shift
-  local output_file="${RESULTS_DIR}/${scenario}.log"
-
-  echo "Running scenario: ${scenario}"
-  if ! siege "$@" > "${output_file}" 2>&1; then
-    echo "Siege returned a non-zero exit code for ${scenario}. Metrics are still collected."
-  fi
-
-  append_summary_line "${scenario}" "${output_file}"
-}
-
-if [[ ! -f "${PUBLIC_ENDPOINTS_FILE}" ]]; then
-  echo "Missing endpoints file: ${PUBLIC_ENDPOINTS_FILE}" >&2
-  exit 1
-fi
+echo 'scenario,exit_code,availability,failed_transactions,response_time' > "${SUMMARY_CSV}"
+printf "scenario\texit_code\tavailability\tfailed_transactions\tresponse_time\n" > "${SCENARIO_STATUS_TSV}"
 
 while IFS= read -r endpoint; do
   if [[ -z "${endpoint}" || "${endpoint}" == \#* ]]; then
     continue
   fi
+
   scenario_name="get_$(echo "${endpoint}" | tr '/:' '__' | sed 's/^_//')"
-  run_siege_and_record "${scenario_name}" -c "${USERS}" -t "${DURATION}" -b "${BASE_URL}${endpoint}"
+  run_siege_and_record \
+    "${scenario_name}" \
+    "siege -c ${USERS} -t ${DURATION} -b ${BASE_URL}${endpoint}" \
+    -c "${USERS}" \
+    -t "${DURATION}" \
+    -b \
+    "${BASE_URL}${endpoint}"
 done < "${PUBLIC_ENDPOINTS_FILE}"
 
 LOGIN_PAYLOAD="$(printf '{"email":"%s","password":"%s"}' "${SELLER_EMAIL}" "${SELLER_PASSWORD}")"
 run_siege_and_record \
   "post_auth_login" \
+  "siege -c ${USERS} -t ${DURATION} -b --content-type application/json ${BASE_URL}/auth/login POST <redacted-json>" \
   -c "${USERS}" \
   -t "${DURATION}" \
   -b \
@@ -88,12 +152,19 @@ run_siege_and_record \
   "${BASE_URL}/auth/login POST ${LOGIN_PAYLOAD}"
 
 LOGIN_RESPONSE_FILE="${RESULTS_DIR}/login-response.json"
+LOGIN_CURL_LOG="${RESULTS_DIR}/login-curl.log"
+LOGIN_STATUS_CODE="000"
+
+log "Command: curl -X POST ${BASE_URL}/auth/login (login token retrieval)"
 LOGIN_STATUS_CODE="$(
   curl -sS -o "${LOGIN_RESPONSE_FILE}" -w '%{http_code}' \
     -X POST "${BASE_URL}/auth/login" \
     -H 'Content-Type: application/json' \
-    -d "${LOGIN_PAYLOAD}"
+    -d "${LOGIN_PAYLOAD}" \
+    2> "${LOGIN_CURL_LOG}" || echo "000"
 )"
+
+log "Login status code for protected scenario bootstrap: ${LOGIN_STATUS_CODE}"
 
 if [[ "${LOGIN_STATUS_CODE}" == "200" ]]; then
   TOKEN="$(
@@ -103,17 +174,25 @@ if [[ "${LOGIN_STATUS_CODE}" == "200" ]]; then
   if [[ -n "${TOKEN}" ]]; then
     run_siege_and_record \
       "get_auth_me" \
+      "siege -c ${USERS} -t ${DURATION} -b -H 'Authorization: Bearer <token>' ${BASE_URL}/auth/me" \
       -c "${USERS}" \
       -t "${DURATION}" \
       -b \
       -H "Authorization: Bearer ${TOKEN}" \
       "${BASE_URL}/auth/me"
   else
-    echo "Skipping protected scenario: no access token extracted." | tee -a "${SUMMARY_MD}"
+    record_non_siege_failure "get_auth_me" 96 "Token extraction failed from login response."
   fi
 else
-  echo "Skipping protected scenario: login failed with HTTP ${LOGIN_STATUS_CODE}." | tee -a "${SUMMARY_MD}"
+  record_non_siege_failure "get_auth_me" 97 "Skipping /auth/me siege run because login returned HTTP ${LOGIN_STATUS_CODE}."
 fi
 
-echo
-echo "Performance campaign finished. Summary: ${SUMMARY_MD}"
+log "Campaign finished. Scenarios executed: ${TOTAL_SCENARIOS}, failed: ${FAILED_SCENARIOS}"
+log "Summary file: ${SUMMARY_MD}"
+
+if [[ "${FAILED_SCENARIOS}" -gt 0 ]]; then
+  log "At least one scenario failed. Returning exit code 1."
+  exit 1
+fi
+
+log "All scenarios succeeded."

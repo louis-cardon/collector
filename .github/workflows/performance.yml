@@ -93,7 +93,24 @@ jobs:
           tail -n 200 backend.log || true
           exit 1
 
+      - name: Sanity check /catalog and /categories
+        run: |
+          set -euo pipefail
+          for path in /catalog /categories; do
+            body_file="/tmp${path//\//_}.json"
+            status_code="$(curl -sS -o "$body_file" -w '%{http_code}' "http://127.0.0.1:3001${path}")"
+            echo "${path} -> HTTP ${status_code}"
+            echo "Response sample (${path}):"
+            head -c 300 "$body_file" || true
+            echo
+            if [ "$status_code" -ge 500 ]; then
+              echo "Sanity check failed on ${path} (HTTP ${status_code})"
+              exit 1
+            fi
+          done
+
       - name: Run load scenarios
+        id: run_load
         env:
           RESULTS_DIR: load-test-results
         run: |
@@ -103,6 +120,21 @@ jobs:
           DURATION="${DURATION:-30S}"
           chmod +x backend/load-tests/run-performance.sh
           backend/load-tests/run-performance.sh "http://127.0.0.1:3001" "$USERS" "$DURATION"
+
+      - name: Show performance diagnostics
+        if: always()
+        run: |
+          echo "=== load-test-results/summary.csv ==="
+          cat load-test-results/summary.csv || true
+          echo
+          echo "=== load-test-results/scenarios-status.tsv ==="
+          cat load-test-results/scenarios-status.tsv || true
+          echo
+          echo "=== load-test-results/run.log (tail) ==="
+          tail -n 200 load-test-results/run.log || true
+          echo
+          echo "=== backend.log (tail) ==="
+          tail -n 200 backend.log || true
 
       - name: Publish summary
         if: always()
