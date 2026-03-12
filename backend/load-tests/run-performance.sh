@@ -30,19 +30,44 @@ log() {
 extract_metric() {
   local label="$1"
   local file="$2"
-  local value lower_label
+  local value lower_label key_regex
 
   lower_label="$(echo "${label}" | tr '[:upper:]' '[:lower:]')"
+  case "${lower_label}" in
+    "availability")
+      key_regex='^availability$'
+      ;;
+    "failed transactions")
+      key_regex='^failed transactions?$'
+      ;;
+    "response time")
+      key_regex='^response time$'
+      ;;
+    "transaction rate")
+      key_regex='^transaction rate$'
+      ;;
+    *)
+      key_regex="^${lower_label}$"
+      ;;
+  esac
+
   value="$(
-    sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' "${file}" | awk -F ':' -v key="${lower_label}" '
+    sed -E \
+      -e 's/\x1B\[[0-9;]*[[:alpha:]]//g' \
+      -e 's/\r/\n/g' \
+      -e 's/,[[:space:]]*([[:alpha:]][[:alpha:] ]*[[:space:]]*:)/\n\1/g' \
+      "${file}" | awk -F ':' -v key_regex="${key_regex}" '
       {
         metric_name=$1
+        gsub(/[[:space:]]+/, " ", metric_name)
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", metric_name)
         metric_name=tolower(metric_name)
 
-        if (index(metric_name, key) > 0) {
+        if (metric_name ~ key_regex) {
           metric_value=substr($0, index($0, ":") + 1)
+          gsub(/[[:space:]]+/, " ", metric_value)
           gsub(/^[[:space:]]+|[[:space:]]+$/, "", metric_value)
+          gsub(/[[:space:]]*,[[:space:]]*$/, "", metric_value)
           print metric_value
           exit
         }
