@@ -142,3 +142,28 @@ npm run prisma:seed -w backend
 - `npm run test:coverage` : couverture de tests
 - `npm run test:e2e` : tests e2e API backend (Supertest)
 - `npm run test:e2e:playwright` : socle e2e Playwright frontend
+
+## CI/CD GitHub Actions
+
+Workflow principal : `.github/workflows/ci.yml`
+
+Jobs :
+- `quality-and-tests` :
+  - `npm ci`
+  - lint frontend et backend
+  - build frontend et backend
+  - tests frontend et backend
+  - tests e2e backend
+  - coverage + upload d’artefacts
+- `dependency-vulnerability-scan` :
+  - `npm audit` (seuil `high`)
+- `sonarqube-analysis` :
+  - exécution conditionnelle si secrets Sonar présents
+- `playwright-smoke` :
+  - job manuel (`workflow_dispatch`)
+
+Secrets GitHub optionnels (SonarQube) :
+- `SONAR_TOKEN`
+- `SONAR_HOST_URL`
+
+Sans ces deux secrets, le job SonarQube est ignoré.
