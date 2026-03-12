@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import DemoNavigation from "@/components/demo-navigation";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <DemoNavigation />
+        {children}
+      </body>
     </html>
   );
 }

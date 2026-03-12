@@ -1,0 +1,76 @@
+.header {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.inner {
+  align-items: center;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  margin: 0 auto;
+  max-width: 72rem;
+  padding: 0.75rem 1rem;
+}
+
+.brand {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.brand a {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.session {
+  color: #4b5563;
+  margin: 0;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.nav a {
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 0.4rem 0.65rem;
+}
+
+.nav a.active {
+  background: #111827;
+  border-color: #111827;
+  color: #ffffff;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.actions a,
+.actions button {
+  background: #111827;
+  border: 0;
+  border-radius: 0.375rem;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.4rem 0.65rem;
+}
+
+@media (min-width: 900px) {
+  .inner {
+    grid-template-columns: 1.2fr 2fr auto;
+  }
+
+  .actions {
+    justify-content: flex-end;
+  }
+}

@@ -20,6 +20,25 @@ export function getAccessToken(): string | null {
   return window.localStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
+export function getAuthUser(): AuthUser | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const rawUser = window.localStorage.getItem(AUTH_USER_KEY);
+
+  if (!rawUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawUser) as AuthUser;
+  } catch {
+    window.localStorage.removeItem(AUTH_USER_KEY);
+    return null;
+  }
+}
+
 export function clearAuthSession(): void {
   if (typeof window === "undefined") {
     return;

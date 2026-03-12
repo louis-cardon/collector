@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,6 +18,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
@@ -61,11 +63,17 @@ export default function LoginPage() {
 
       const response = await login(payload);
       saveAuthSession(response.accessToken, response.user);
-      setSubmitSuccess(`Connecte en tant que ${response.user.role}.`);
+      setSubmitSuccess(`Connecte en tant que ${response.user.role}. Redirection...`);
       reset({
         email: parsedValues.data.email,
         password: "",
       });
+
+      const targetPath =
+        response.user.role === "admin"
+          ? "/admin/articles/pending"
+          : "/seller/articles/new";
+      router.push(targetPath);
     } catch (error) {
       if (error instanceof ApiError) {
         setSubmitError(error.message);

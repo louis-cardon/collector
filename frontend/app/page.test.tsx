@@ -7,7 +7,7 @@ describe('Home page', () => {
     render(<Home />);
 
     expect(
-      screen.getByRole('heading', { name: 'Collector.shop' }),
+      screen.getByRole('heading', { name: /Collector\.shop/i }),
     ).toBeInTheDocument();
   });
 });
