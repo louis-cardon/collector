@@ -176,6 +176,58 @@ Note :
 
 Sans ces deux secrets, le job SonarQube est ignoré.
 
+## Workflow performance (non bloquant)
+
+Workflow dédié : `.github/workflows/performance.yml`
+
+Objectif :
+- exécuter une campagne de charge séparée de la CI qualité ;
+- produire des métriques exploitables pour la documentation et la soutenance ;
+- ne pas ralentir les validations push/PR.
+
+Déclencheurs :
+- manuel (`workflow_dispatch`) ;
+- hebdomadaire (lundi, 04:00 UTC) via `schedule`.
+
+Scénarios exécutés :
+- `GET /catalog`
+- `GET /categories`
+- `POST /auth/login`
+- `GET /auth/me` (avec token JWT récupéré après login)
+
+Outillage :
+- `Siege` (installé dans le job GitHub Actions)
+- script : `backend/load-tests/run-performance.sh`
+- endpoints publics : `backend/load-tests/endpoints-public.txt`
+
+Artefacts produits :
+- `load-test-results/summary.md` (résumé lisible)
+- `load-test-results/summary.csv` (données synthétiques)
+- logs bruts par scénario (`*.log`)
+- `backend.log` (logs API de la campagne)
+
+Le résumé est aussi publié dans l’onglet `Summary` du run GitHub Actions.
+
+### Lancer manuellement
+
+1. Ouvrir `Actions` dans GitHub.
+2. Sélectionner le workflow `performance`.
+3. Cliquer sur `Run workflow`.
+4. Renseigner éventuellement :
+   - `users` (concurrence Siege, défaut `20`)
+   - `duration` (durée Siege, défaut `30S`)
+
+### Interpréter les résultats
+
+Dans `summary.md`, suivre en priorité :
+- `Availability` : proche de `100%` ;
+- `Response time` : temps moyen de réponse ;
+- `Transaction rate` : débit de requêtes ;
+- `Failed transactions` : doit rester bas ;
+- `Longest transaction` : identifie les pics de latence.
+
+Ces résultats alimentent ensuite `docs/09-resultats-tests-charge-observabilite.md` et le plan de remédiation.
+
 ## Posture vulnérabilités dépendances
 
 La CI bloque sur les vulnérabilités `Critical` et alerte sur les `High`, conformément aux métriques qualité du projet.

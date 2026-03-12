@@ -286,17 +286,24 @@ Les tests de charge ont pour objectif de mesurer le comportement du prototype su
 ## 10.2 Configuration des tests
 
 ### Outil utilisé
-- `[Siege / JMeter]`
+- `Siege` (workflow dédié `.github/workflows/performance.yml`)
 
 ### Environnement de test
-- URL ciblée : `[à compléter]`
+- URL ciblée : `http://127.0.0.1:3001`
 - date : `[à compléter]`
-- nombre d’utilisateurs simulés : `[à compléter]`
-- durée : `[à compléter]`
+- nombre d’utilisateurs simulés : `[à compléter via input workflow users]`
+- durée : `[à compléter via input workflow duration]`
 - endpoints testés :
   - `GET /catalog`
+  - `GET /categories`
   - `POST /auth/login`
-  - éventuellement `POST /articles`
+  - `GET /auth/me` (scénario protégé avec JWT)
+
+### Artefacts de campagne
+- `load-test-results/summary.md`
+- `load-test-results/summary.csv`
+- logs bruts des scénarios (`*.log`)
+- `backend.log`
 
 ## 10.3 Résultats synthétiques
 

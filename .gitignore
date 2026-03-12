@@ -53,6 +53,7 @@ backend/prisma/*.db-journal
 playwright-report/
 test-results/
 blob-report/
+load-test-results/
 
 # Cache
 .cache/

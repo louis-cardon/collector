@@ -1,0 +1,132 @@
+name: performance
+
+on:
+  workflow_dispatch:
+    inputs:
+      users:
+        description: "Nombre d'utilisateurs concurrents Siege"
+        required: false
+        default: "20"
+      duration:
+        description: "Durée Siege (ex: 30S, 1M)"
+        required: false
+        default: "30S"
+  schedule:
+    - cron: "0 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  load-tests:
+    name: load-tests-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: collector
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d collector"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/collector?schema=public
+      JWT_SECRET: performance-jwt-secret
+      SELLER_EMAIL: seller@collector.local
+      SELLER_PASSWORD: Seller123!
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Siege
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y siege
+
+      - name: Prepare database
+        run: |
+          npm run prisma:migrate:deploy -w backend
+          npm run prisma:seed -w backend
+
+      - name: Build backend
+        run: npm run build -w backend
+
+      - name: Start backend
+        run: |
+          npm run start:prod -w backend > backend.log 2>&1 &
+          echo $! > backend.pid
+
+      - name: Wait for backend readiness
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3001/categories >/dev/null; then
+              echo "Backend is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become ready in time."
+          tail -n 200 backend.log || true
+          exit 1
+
+      - name: Run load scenarios
+        env:
+          RESULTS_DIR: load-test-results
+        run: |
+          USERS="${{ github.event.inputs.users }}"
+          DURATION="${{ github.event.inputs.duration }}"
+          USERS="${USERS:-20}"
+          DURATION="${DURATION:-30S}"
+          chmod +x backend/load-tests/run-performance.sh
+          backend/load-tests/run-performance.sh "http://127.0.0.1:3001" "$USERS" "$DURATION"
+
+      - name: Publish summary
+        if: always()
+        run: |
+          if [ -f load-test-results/summary.md ]; then
+            cat load-test-results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Aucun résumé de performance généré." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: performance-results-${{ github.run_id }}
+          path: |
+            load-test-results
+            backend.log
+          if-no-files-found: warn
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f backend.pid ]; then
+            kill "$(cat backend.pid)" || true
+          fi

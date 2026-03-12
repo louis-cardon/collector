@@ -1,0 +1,3 @@
+# Endpoints publics a tester en charge (backend API)
+/catalog
+/categories
