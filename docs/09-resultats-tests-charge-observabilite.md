@@ -203,13 +203,31 @@ Les métriques retenues pour le projet sont :
 
 | Type de vulnérabilité | Front | Back | Total |
 |---|---:|---:|---:|
-| Critical | `[x]` | `[x]` | `[x]` |
-| High | `[x]` | `[x]` | `[x]` |
-| Moderate | `[x]` | `[x]` | `[x]` |
-| Low | `[x]` | `[x]` | `[x]` |
+| Critical | `0` | `0` | `0` |
+| High | `0` | `0` | `0` |
+| Moderate | `0` | `8` | `8` |
+| Low | `0` | `0` | `0` |
 
 ## 8.2 Analyse
-`[à compléter]`
+Le scan de dépendances a été exécuté le **12 mars 2026** via `npm audit` sur le monorepo (`--workspaces --include-workspace-root`) puis par workspace.
+
+Constats principaux :
+- aucune vulnérabilité `High` ou `Critical` ;
+- `8` vulnérabilités `Moderate`, toutes côté back (`backend`) ;
+- aucune vulnérabilité côté front (`frontend`).
+
+Dépendances concernées :
+- runtime API : `@nestjs/common` via `file-type@21.3.0` (advisory `GHSA-5v7r-6r5c-r473`) ;
+- tooling back : `@nestjs/cli` et `@nestjs/schematics` via `@angular-devkit/*` et `ajv` (advisory `GHSA-2g4f-4pwh-qvx6`).
+
+Analyse d’exploitabilité :
+- `ajv` est dans la chaîne de tooling Nest/Angular Devkit (scaffolding/build), pas dans l’exposition directe des routes runtime de l’API ;
+- `file-type` est transitif via Nest et n’est pas utilisé explicitement dans les parcours métier actuellement implémentés (pas de parsing binaire d’upload en production dans ce POC).
+
+Remédiation immédiate évaluée :
+- `npm audit fix --dry-run` ne propose pas de correctif non-breaking applicable ;
+- les versions Nest installées sont déjà sur leurs derniers patchs disponibles à date ;
+- les upgrades proposés automatiquement par `npm audit` pointent vers des majors incohérentes pour la stack courante et ne sont pas retenus.
 
 ### Points à commenter
 - présence ou non de vulnérabilités critiques ;
@@ -218,7 +236,8 @@ Les métriques retenues pour le projet sont :
 - vulnérabilités acceptées temporairement avec justification.
 
 ## 8.3 Conclusion sécurité dépendances
-`[à compléter]`
+La métrique projet est respectée sur le critère bloquant (`0 High`, `0 Critical`).  
+Les vulnérabilités `Moderate` restantes sont documentées, suivies et classées en dette de sécurité maîtrisée à court terme, avec action de surveillance active des releases upstream NestJS/Angular Devkit.
 
 ## 9. Résultats d’observabilité
 
@@ -313,7 +332,7 @@ Les tests de charge ont pour objectif de mesurer le comportement du prototype su
 | Métrique | Objectif | Résultat obtenu | Statut |
 |---|---:|---:|---|
 | Couverture de tests | `>= 80 %` | `[x %]` | `[OK/NOK]` |
-| Vulnérabilités High / Critical | `0` | `[x]` | `[OK/NOK]` |
+| Vulnérabilités High / Critical | `0` | `0` | `OK` |
 | Latence p95 endpoints critiques | `< 300 ms` | `[x ms]` | `[OK/NOK]` |
 | Qualité statique SonarQube | `Quality gate OK / rating A / duplication < 3 %` | `[à compléter]` | `[OK/NOK]` |
 
@@ -329,7 +348,10 @@ Les tests de charge ont pour objectif de mesurer le comportement du prototype su
 `[à compléter]`
 
 ## 12.3 Écarts sécurité
-`[à compléter]`
+- pas d’écart bloquant sur le seuil sécurité défini (aucune vulnérabilité `High`/`Critical`) ;
+- présence d’un écart non bloquant : `8` vulnérabilités `Moderate` sur des dépendances back majoritairement transitives ;
+- aucun correctif non-breaking disponible automatiquement via `npm audit fix` à date ;
+- décision : acceptation temporaire documentée, avec suivi des versions upstream et re-scan régulier.
 
 ## 12.4 Écarts performance
 `[à compléter]`
@@ -342,7 +364,8 @@ Les tests de charge ont pour objectif de mesurer le comportement du prototype su
 À partir des résultats précédents, les risques potentiels identifiés sont les suivants :
 
 ### Risques de sécurité
-- `[à compléter]`
+- risque résiduel modéré lié à des dépendances transitives de la toolchain back ;
+- risque d’augmentation future si ces dépendances ne sont pas suivies sur plusieurs itérations.
 
 ### Risques de disponibilité
 - `[à compléter]`
@@ -361,10 +384,10 @@ Les tests de charge ont pour objectif de mesurer le comportement du prototype su
 Les résultats de ce document serviront directement à alimenter le plan de remédiation du document suivant.
 
 ### Sujets susceptibles de passer en priorité 1
-- `[à compléter]`
+- conserver la correction immédiate en cas d’apparition d’une vulnérabilité `High` ou `Critical`.
 
 ### Sujets susceptibles de passer en priorité 2
-- `[à compléter]`
+- remédiation des vulnérabilités `Moderate` dépendantes d’upstream (`@nestjs/common`, `@nestjs/cli`, `@nestjs/schematics`) dès disponibilité d’un patch compatible.
 
 ### Sujets susceptibles de passer en priorité 3
 - `[à compléter]`

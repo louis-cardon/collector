@@ -118,8 +118,15 @@ sur la base de :
 
 ### 7.4 Dépendances et vulnérabilités connues
 Le niveau de sécurité des dépendances est :
-- `[satisfaisant / partiellement satisfaisant / insuffisant]`
+- `partiellement satisfaisant`
 au regard des vulnérabilités remontées par les scans.
+
+État au 12 mars 2026 :
+- `0` vulnérabilité `Critical` ;
+- `0` vulnérabilité `High` ;
+- `8` vulnérabilités `Moderate`, localisées sur le backend ;
+- majorité des vulnérabilités sur dépendances transitives/outillage (`@angular-devkit/*`, `ajv`) ;
+- un cas runtime transitif via `@nestjs/common -> file-type`.
 
 ### 7.5 Observabilité
 Les logs et l’audit sont :
@@ -281,6 +288,12 @@ Présence de vulnérabilités connues dans les dépendances front ou back.
 - intégrer un blocage du pipeline selon le niveau de sévérité ;
 - maintenir un inventaire minimal des dépendances critiques.
 
+### Décision appliquée sur la v1
+- aucune action breaking n’a été appliquée ;
+- `npm audit fix` ne propose pas de correctif non-breaking applicable ;
+- les dépendances Nest concernées sont déjà sur leurs dernières versions disponibles à date ;
+- les vulnérabilités `Moderate` restantes sont acceptées temporairement avec justification, et recontrôlées à chaque itération CI.
+
 ### Justification
 Le sujet impose explicitement une détection des vulnérabilités et la sécurité est une exigence majeure du contexte Collector.
 
@@ -423,6 +436,7 @@ Le déploiement cloud fait partie du périmètre évalué. Une configuration imp
 | P2-04 | Enrichissement des logs et de l’audit admin | Améliorer la traçabilité | Facilite le diagnostic et la remédiation | Dev back | `[à compléter]` |
 | P2-05 | Revue de configuration cloud et CORS | Réduire les erreurs de configuration | Sécurise l’environnement déployé | DevOps | `[à compléter]` |
 | P2-06 | Optimisation des endpoints lents identifiés sous charge | Réduire la latence p95 et le taux d’erreur | Améliore la robustesse sous trafic | Dev back | `[à compléter]` |
+| P2-07 | Suivi des vulnérabilités Moderate transitives backend et application des patchs upstream dès disponibilité | Réduire la dette sécurité non bloquante | Permet une remédiation prudente sans introduire de rupture | Lead Dev + Dev back | `[à compléter]` |
 
 ## 9.3 Priorité 3 — Actions d’amélioration
 
@@ -509,7 +523,8 @@ Dans le cadre d’un prototype, certains risques résiduels peuvent être accept
 - absence de mécanismes complexes de révocation de session ;
 - couverture partielle de certaines zones front secondaires ;
 - limitations de performance au-delà d’une charge modérée ;
-- absence de contrôle automatisé avancé sur le contenu des annonces.
+- absence de contrôle automatisé avancé sur le contenu des annonces ;
+- vulnérabilités `Moderate` transitives de dépendances backend tant qu’aucun patch compatible non-breaking n’est disponible.
 
 ### Condition d’acceptation
 Ces risques ne sont acceptables que si :

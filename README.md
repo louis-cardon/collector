@@ -175,3 +175,21 @@ Note :
 - `GITHUB_TOKEN` est fourni automatiquement par GitHub Actions et utilisé pour le contexte PR.
 
 Sans ces deux secrets, le job SonarQube est ignoré.
+
+## Posture vulnérabilités dépendances
+
+La CI bloque sur les vulnérabilités `Critical` et alerte sur les `High`, conformément aux métriques qualité du projet.
+
+Commandes utiles :
+
+```bash
+npm audit --workspaces --include-workspace-root
+npm audit -w backend
+npm audit -w frontend
+```
+
+Posture retenue pour le POC :
+- corriger immédiatement les vulnérabilités `Critical` et `High` ;
+- appliquer uniquement les correctifs non-breaking sûrs ;
+- documenter les vulnérabilités `Moderate` restantes (notamment transitives/tooling) avec justification ;
+- revalider à chaque itération CI et appliquer les patchs upstream dès disponibilité.
