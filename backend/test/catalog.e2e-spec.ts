@@ -226,4 +226,19 @@ describe('Catalog API (integration)', () => {
     await request(httpApp).get('/catalog/article-pending').expect(404);
     await request(httpApp).get('/catalog/article-rejected').expect(404);
   });
+
+  it('GET /catalog/:id returns approved article publicly', async () => {
+    const response = await request(httpApp)
+      .get('/catalog/article-approved-1')
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        id: 'article-approved-1',
+        title: 'Carte approuvée 1',
+      }),
+    );
+    expect(response.body).not.toHaveProperty('sellerId');
+    expect(response.body).not.toHaveProperty('status');
+  });
 });

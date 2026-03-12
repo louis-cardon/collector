@@ -287,6 +287,10 @@ describe('Admin Articles API (integration)', () => {
       .expect(403);
   });
 
+  it('refuses pending listing without token', async () => {
+    await request(httpApp).get('/admin/articles/pending').expect(401);
+  });
+
   it('approves a pending article with admin role', async () => {
     const adminToken = await loginAndGetToken(adminUser.email, 'Admin123!');
 
@@ -350,5 +354,14 @@ describe('Admin Articles API (integration)', () => {
       .post('/admin/articles/article-approved/reject')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(409);
+  });
+
+  it('returns 404 when admin tries to review an unknown article', async () => {
+    const adminToken = await loginAndGetToken(adminUser.email, 'Admin123!');
+
+    await request(httpApp)
+      .post('/admin/articles/missing-article/approve')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(404);
   });
 });

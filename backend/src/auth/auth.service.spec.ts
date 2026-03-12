@@ -34,6 +34,10 @@ describe('AuthService', () => {
     );
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('returns token and user when credentials are valid', async () => {
     usersService.findByEmail.mockResolvedValue(baseUser);
     jwtService.signAsync.mockResolvedValue('jwt-token');
@@ -101,5 +105,16 @@ describe('AuthService', () => {
     expect(usersService.findByEmail).toHaveBeenCalledWith(
       'seller@collector.local',
     );
+  });
+
+  it('throws UnauthorizedException when password comparison throws unexpectedly', async () => {
+    usersService.findByEmail.mockResolvedValue(baseUser);
+
+    await expect(
+      authService.login({
+        email: baseUser.email,
+        password: undefined as unknown as string,
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

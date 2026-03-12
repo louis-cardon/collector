@@ -290,4 +290,39 @@ describe('Articles API (integration)', () => {
       })
       .expect(400);
   });
+
+  it('refuses article creation when payload is invalid', async () => {
+    const sellerToken = await loginAndGetToken(sellerUser.email, 'Seller123!');
+    const existingCategoryId = [...categories.values()][0].id;
+
+    await request(httpApp)
+      .post('/articles')
+      .set('Authorization', `Bearer ${sellerToken}`)
+      .send({
+        title: '',
+        description: 'trop court',
+        price: 0,
+        shippingCost: -1,
+        categoryId: existingCategoryId,
+      })
+      .expect(400);
+  });
+
+  it('rejects payload with forbidden status field from seller', async () => {
+    const sellerToken = await loginAndGetToken(sellerUser.email, 'Seller123!');
+    const existingCategoryId = [...categories.values()][0].id;
+
+    await request(httpApp)
+      .post('/articles')
+      .set('Authorization', `Bearer ${sellerToken}`)
+      .send({
+        title: 'Carte Dragon Ball édition spéciale',
+        description: 'Carte collector en excellent état, sleeve fournie.',
+        price: 79.9,
+        shippingCost: 4.5,
+        categoryId: existingCategoryId,
+        status: ArticleStatus.APPROVED,
+      })
+      .expect(400);
+  });
 });

@@ -110,6 +110,13 @@ describe('Auth API (integration)', () => {
       .expect(401);
   });
 
+  it('POST /auth/login returns 400 when payload is invalid', async () => {
+    await request(httpApp)
+      .post('/auth/login')
+      .send({ email: 'not-an-email' })
+      .expect(400);
+  });
+
   it('GET /auth/me returns user when token is valid', async () => {
     const loginResponse = await request(httpApp)
       .post('/auth/login')
@@ -135,5 +142,12 @@ describe('Auth API (integration)', () => {
 
   it('GET /auth/me returns 401 when token is missing', async () => {
     await request(httpApp).get('/auth/me').expect(401);
+  });
+
+  it('GET /auth/me returns 401 when token is invalid', async () => {
+    await request(httpApp)
+      .get('/auth/me')
+      .set('Authorization', 'Bearer invalid-token')
+      .expect(401);
   });
 });

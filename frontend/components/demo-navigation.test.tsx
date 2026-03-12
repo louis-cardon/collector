@@ -39,6 +39,23 @@ describe("DemoNavigation", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows connected session info when a user is stored", async () => {
+    getAuthUserMock.mockReturnValue({
+      id: "seller-id",
+      email: "seller@collector.local",
+      role: "seller",
+    });
+
+    render(<DemoNavigation />);
+
+    expect(
+      await screen.findByText("Connecte: seller@collector.local (seller)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Se deconnecter" }),
+    ).toBeInTheDocument();
+  });
+
   it("logs out and redirects to home when user clicks logout", async () => {
     getAuthUserMock.mockReturnValue({
       id: "admin-id",

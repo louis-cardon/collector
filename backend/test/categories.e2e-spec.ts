@@ -253,4 +253,43 @@ describe('Categories API (integration)', () => {
       .send({ name: 'Cartes' })
       .expect(409);
   });
+
+  it('updates a category with admin role', async () => {
+    const adminToken = await loginAndGetToken(adminUser.email, 'Admin123!');
+    const categoryId = [...categories.keys()][0];
+
+    const response = await request(httpApp)
+      .patch(`/categories/${categoryId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Cartes retro' })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        id: categoryId,
+        name: 'Cartes retro',
+      }),
+    );
+  });
+
+  it('refuses category update for seller role', async () => {
+    const sellerToken = await loginAndGetToken(sellerUser.email, 'Seller123!');
+    const categoryId = [...categories.keys()][0];
+
+    await request(httpApp)
+      .patch(`/categories/${categoryId}`)
+      .set('Authorization', `Bearer ${sellerToken}`)
+      .send({ name: 'Cartes retro' })
+      .expect(403);
+  });
+
+  it('returns 404 when updating an unknown category', async () => {
+    const adminToken = await loginAndGetToken(adminUser.email, 'Admin123!');
+
+    await request(httpApp)
+      .patch('/categories/missing-category')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Cartes retro' })
+      .expect(404);
+  });
 });
