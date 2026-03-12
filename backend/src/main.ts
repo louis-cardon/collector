@@ -4,19 +4,19 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 
-const ALLOWED_EXACT_ORIGINS = new Set<string>([
+export const ALLOWED_EXACT_ORIGINS = new Set<string>([
   'http://localhost:3000',
   'http://localhost:3001',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:3001',
 ]);
 
-const ALLOWED_GITHUB_DEV_ORIGIN_PATTERNS = [
+export const ALLOWED_GITHUB_DEV_ORIGIN_PATTERNS = [
   /^https:\/\/.+-(3000|3001)\.app\.github\.dev$/,
   /^https:\/\/.+-(3000|3001)\.preview\.app\.github\.dev$/,
 ];
 
-function isAllowedOrigin(origin: string): boolean {
+export function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_EXACT_ORIGINS.has(origin)) {
     return true;
   }
@@ -26,7 +26,7 @@ function isAllowedOrigin(origin: string): boolean {
   );
 }
 
-async function bootstrap() {
+export async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });
@@ -69,4 +69,7 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3001);
 }
-void bootstrap();
+
+if (process.env.NODE_ENV !== 'test') {
+  void bootstrap();
+}
