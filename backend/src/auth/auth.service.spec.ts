@@ -74,4 +74,32 @@ describe('AuthService', () => {
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('throws UnauthorizedException when password hash is missing', async () => {
+    usersService.findByEmail.mockResolvedValue({
+      ...baseUser,
+      passwordHash: '',
+    });
+
+    await expect(
+      authService.login({
+        email: baseUser.email,
+        password: 'Seller123!',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('normalizes email before querying user store', async () => {
+    usersService.findByEmail.mockResolvedValue(baseUser);
+    jwtService.signAsync.mockResolvedValue('jwt-token');
+
+    await authService.login({
+      email: '  SELLER@collector.local  ',
+      password: 'Seller123!',
+    });
+
+    expect(usersService.findByEmail).toHaveBeenCalledWith(
+      'seller@collector.local',
+    );
+  });
 });

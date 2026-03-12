@@ -39,13 +39,27 @@ export class AuthService {
     email: string,
     password: string,
   ): Promise<User> {
-    const user = await this.usersService.findByEmail(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalizedEmail);
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    const passwordHash =
+      typeof user.passwordHash === 'string' ? user.passwordHash.trim() : '';
+
+    if (!passwordHash) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    let isPasswordValid = false;
+
+    try {
+      isPasswordValid = await bcrypt.compare(password, passwordHash);
+    } catch {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');

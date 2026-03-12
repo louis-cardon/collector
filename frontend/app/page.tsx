@@ -11,6 +11,7 @@ export default function HomePage() {
         <Link href="/catalog">Voir le catalogue public</Link>
         <Link href="/login">Se connecter</Link>
         <Link href="/seller/articles/new">Creer une annonce seller</Link>
+        <Link href="/admin/articles/pending">Valider les annonces (admin)</Link>
       </nav>
     </main>
   );
