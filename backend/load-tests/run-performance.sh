@@ -30,10 +30,25 @@ log() {
 extract_metric() {
   local label="$1"
   local file="$2"
-  local line value
+  local value lower_label
 
-  line="$(grep -E "^${label}:" "${file}" | head -n1 || true)"
-  value="$(echo "${line}" | sed -E "s/^${label}:[[:space:]]*//" | xargs || true)"
+  lower_label="$(echo "${label}" | tr '[:upper:]' '[:lower:]')"
+  value="$(
+    sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' "${file}" | awk -F ':' -v key="${lower_label}" '
+      {
+        metric_name=$1
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", metric_name)
+        metric_name=tolower(metric_name)
+
+        if (index(metric_name, key) > 0) {
+          metric_value=substr($0, index($0, ":") + 1)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", metric_value)
+          print metric_value
+          exit
+        }
+      }
+    ' || true
+  )"
 
   if [[ -n "${value}" ]]; then
     echo "${value}"
@@ -46,15 +61,16 @@ record_summary() {
   local scenario="$1"
   local exit_code="$2"
   local output_file="$3"
-  local availability failed_transactions response_time
+  local availability failed_transactions response_time transaction_rate
 
   availability="$(extract_metric "Availability" "${output_file}")"
   failed_transactions="$(extract_metric "Failed transactions" "${output_file}")"
   response_time="$(extract_metric "Response time" "${output_file}")"
+  transaction_rate="$(extract_metric "Transaction rate" "${output_file}")"
 
-  echo "| ${scenario} | ${exit_code} | ${availability} | ${failed_transactions} | ${response_time} |" >> "${SUMMARY_MD}"
-  echo "${scenario},${exit_code},\"${availability}\",\"${failed_transactions}\",\"${response_time}\"" >> "${SUMMARY_CSV}"
-  printf "%s\t%s\t%s\t%s\t%s\n" "${scenario}" "${exit_code}" "${availability}" "${failed_transactions}" "${response_time}" >> "${SCENARIO_STATUS_TSV}"
+  echo "| ${scenario} | ${exit_code} | ${availability} | ${failed_transactions} | ${response_time} | ${transaction_rate} |" >> "${SUMMARY_MD}"
+  echo "${scenario},${exit_code},\"${availability}\",\"${failed_transactions}\",\"${response_time}\",\"${transaction_rate}\"" >> "${SUMMARY_CSV}"
+  printf "%s\t%s\t%s\t%s\t%s\t%s\n" "${scenario}" "${exit_code}" "${availability}" "${failed_transactions}" "${response_time}" "${transaction_rate}" >> "${SCENARIO_STATUS_TSV}"
 }
 
 mark_failure_if_needed() {
@@ -119,12 +135,12 @@ cat > "${SUMMARY_MD}" <<EOF
 - Siege duration: ${DURATION}
 - Script log: ${RUN_LOG}
 
-| Scenario | Exit code | Availability | Failed transactions | Response time |
-|---|---:|---:|---:|---:|
+| Scenario | Exit code | Availability | Failed transactions | Response time | Transaction rate |
+|---|---:|---:|---:|---:|---:|
 EOF
 
-echo 'scenario,exit_code,availability,failed_transactions,response_time' > "${SUMMARY_CSV}"
-printf "scenario\texit_code\tavailability\tfailed_transactions\tresponse_time\n" > "${SCENARIO_STATUS_TSV}"
+echo 'scenario,exit_code,availability,failed_transactions,response_time,transaction_rate' > "${SUMMARY_CSV}"
+printf "scenario\texit_code\tavailability\tfailed_transactions\tresponse_time\ttransaction_rate\n" > "${SCENARIO_STATUS_TSV}"
 
 while IFS= read -r endpoint; do
   if [[ -z "${endpoint}" || "${endpoint}" == \#* ]]; then
