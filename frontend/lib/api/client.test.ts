@@ -26,6 +26,8 @@ describe("api client", () => {
     jest.clearAllMocks();
     global.fetch = jest.fn();
     getAccessTokenMock.mockReturnValue(null);
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+    process.env.NODE_ENV = "test";
   });
 
   it("calls proxy path and adds default Accept header", async () => {
@@ -90,5 +92,31 @@ describe("api client", () => {
       message: "title must not be empty",
       status: 400,
     });
+  });
+
+  it("uses the configured API base URL in production deployments", async () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL =
+      "https://collector-api-f9xu.onrender.com/";
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockJsonResponse(200, { items: [] }),
+    );
+
+    await apiRequest<{ items: unknown[] }>("/catalog");
+
+    expect((global.fetch as jest.Mock).mock.calls[0]?.[0]).toBe(
+      "https://collector-api-f9xu.onrender.com/catalog",
+    );
+  });
+
+  it("falls back to the deployed backend origin outside development", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockJsonResponse(200, { items: [] }),
+    );
+
+    await apiRequest<{ items: unknown[] }>("/catalog");
+
+    expect((global.fetch as jest.Mock).mock.calls[0]?.[0]).toBe(
+      "https://collector-api-f9xu.onrender.com/catalog",
+    );
   });
 });

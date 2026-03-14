@@ -16,14 +16,19 @@ type CorsOptionsConfig = {
 
 describe('main bootstrap', () => {
   const originalPort = process.env.PORT;
+  const originalCorsAllowedOrigins = process.env.CORS_ALLOWED_ORIGINS;
 
   afterEach(() => {
     process.env.PORT = originalPort;
+    process.env.CORS_ALLOWED_ORIGINS = originalCorsAllowedOrigins;
     jest.restoreAllMocks();
   });
 
   it('allows expected origins and blocks unknown origins', () => {
     expect(isAllowedOrigin('http://localhost:3000')).toBe(true);
+    expect(
+      isAllowedOrigin('https://collector-frontend-zeta.vercel.app'),
+    ).toBe(true);
     expect(isAllowedOrigin('https://owner-repo-3000.app.github.dev')).toBe(
       true,
     );
@@ -31,6 +36,14 @@ describe('main bootstrap', () => {
       isAllowedOrigin('https://owner-repo-3001.preview.app.github.dev'),
     ).toBe(true);
     expect(isAllowedOrigin('https://evil.example.com')).toBe(false);
+  });
+
+  it('allows origins configured through environment variables', () => {
+    process.env.CORS_ALLOWED_ORIGINS =
+      'https://staging.collector.shop, https://collector.shop';
+
+    expect(isAllowedOrigin('https://staging.collector.shop')).toBe(true);
+    expect(isAllowedOrigin('https://collector.shop')).toBe(true);
   });
 
   it('configures CORS, Swagger, validation pipe and listens on configured port', async () => {

@@ -10,6 +10,21 @@ type ApiRequestOptions = RequestInit & {
 };
 
 const API_PROXY_BASE_PATH = "/api";
+const PRODUCTION_API_ORIGIN = "https://collector-api-f9xu.onrender.com";
+
+function getApiBaseUrl(): string {
+  const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+  if (!configuredBaseUrl) {
+    return process.env.NODE_ENV === "development"
+      ? API_PROXY_BASE_PATH
+      : PRODUCTION_API_ORIGIN;
+  }
+
+  return configuredBaseUrl.endsWith("/")
+    ? configuredBaseUrl.slice(0, -1)
+    : configuredBaseUrl;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -67,11 +82,13 @@ function buildHeaders(
 }
 
 function resolveApiPath(path: string): string {
+  const apiBaseUrl = getApiBaseUrl();
+
   if (path.startsWith("/")) {
-    return `${API_PROXY_BASE_PATH}${path}`;
+    return `${apiBaseUrl}${path}`;
   }
 
-  return `${API_PROXY_BASE_PATH}/${path}`;
+  return `${apiBaseUrl}/${path}`;
 }
 
 export async function apiRequest<T>(

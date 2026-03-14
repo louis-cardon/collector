@@ -9,6 +9,7 @@ export const ALLOWED_EXACT_ORIGINS = new Set<string>([
   'http://localhost:3001',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:3001',
+  'https://collector-frontend-zeta.vercel.app',
 ]);
 
 export const ALLOWED_GITHUB_DEV_ORIGIN_PATTERNS = [
@@ -16,7 +17,19 @@ export const ALLOWED_GITHUB_DEV_ORIGIN_PATTERNS = [
   /^https:\/\/.+-(3000|3001)\.preview\.app\.github\.dev$/,
 ];
 
+function getConfiguredOrigins(): string[] {
+  const configuredOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',') ?? [];
+
+  return configuredOrigins
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+}
+
 export function isAllowedOrigin(origin: string): boolean {
+  if (getConfiguredOrigins().includes(origin)) {
+    return true;
+  }
+
   if (ALLOWED_EXACT_ORIGINS.has(origin)) {
     return true;
   }
