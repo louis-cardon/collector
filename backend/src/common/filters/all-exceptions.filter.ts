@@ -61,9 +61,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     });
   }
 
-  private getStatusCode(exception: unknown): number {
+  private getStatusCode(exception: unknown): HttpStatus {
     if (exception instanceof HttpException) {
-      return exception.getStatus();
+      return exception.getStatus() as HttpStatus;
     }
 
     return HttpStatus.INTERNAL_SERVER_ERROR;

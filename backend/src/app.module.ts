@@ -15,10 +15,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 
-function resolveRequestId(
-  req: IncomingMessage,
-  res: ServerResponse,
-): string {
+function resolveRequestId(req: IncomingMessage, res: ServerResponse): string {
   const headers = req.headers as Record<string, string | string[] | undefined>;
   const headerValue = headers['x-request-id'];
   const requestId = Array.isArray(headerValue)

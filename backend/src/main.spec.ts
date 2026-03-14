@@ -26,9 +26,9 @@ describe('main bootstrap', () => {
 
   it('allows expected origins and blocks unknown origins', () => {
     expect(isAllowedOrigin('http://localhost:3000')).toBe(true);
-    expect(
-      isAllowedOrigin('https://collector-frontend-zeta.vercel.app'),
-    ).toBe(true);
+    expect(isAllowedOrigin('https://collector-frontend-zeta.vercel.app')).toBe(
+      true,
+    );
     expect(isAllowedOrigin('https://owner-repo-3000.app.github.dev')).toBe(
       true,
     );
@@ -49,8 +49,9 @@ describe('main bootstrap', () => {
   it('configures CORS, Swagger, validation pipe and listens on configured port', async () => {
     process.env.PORT = '3456';
 
+    const mockLoggerLog = jest.fn();
     const mockLogger = {
-      log: jest.fn(),
+      log: mockLoggerLog,
     } as unknown as Logger;
     const mockApp = {
       enableCors: jest.fn(),
@@ -81,7 +82,7 @@ describe('main bootstrap', () => {
     expect(createDocumentSpy).toHaveBeenCalledTimes(1);
     expect(setupSpy).toHaveBeenCalledWith('docs', mockApp, {});
     expect(mockApp.listen).toHaveBeenCalledWith('3456', '0.0.0.0');
-    expect(mockLogger.log).toHaveBeenCalledWith(
+    expect(mockLoggerLog).toHaveBeenCalledWith(
       'Collector API listening on 0.0.0.0:3456',
     );
 
