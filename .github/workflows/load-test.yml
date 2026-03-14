@@ -1,0 +1,134 @@
+name: load-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Scenario to run against the deployed Render API"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - catalog
+          - login
+      duration:
+        description: "Duration in seconds for each autocannon run"
+        required: false
+        default: "15"
+      connections:
+        description: "Number of concurrent connections"
+        required: false
+        default: "10"
+  schedule:
+    - cron: "0 5 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-test-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  autocannon:
+    name: autocannon-load-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LOADTEST_BASE_URL: ${{ secrets.LOADTEST_BASE_URL }}
+      LOADTEST_USER_EMAIL: ${{ secrets.LOADTEST_USER_EMAIL }}
+      LOADTEST_USER_PASSWORD: ${{ secrets.LOADTEST_USER_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate required secrets
+        run: |
+          set -euo pipefail
+          if [ -z "${LOADTEST_BASE_URL:-}" ]; then
+            echo "Missing LOADTEST_BASE_URL secret."
+            exit 1
+          fi
+          if [ -z "${LOADTEST_USER_EMAIL:-}" ]; then
+            echo "Missing LOADTEST_USER_EMAIL secret."
+            exit 1
+          fi
+          if [ -z "${LOADTEST_USER_PASSWORD:-}" ]; then
+            echo "Missing LOADTEST_USER_PASSWORD secret."
+            exit 1
+          fi
+
+      - name: Resolve run parameters
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "LOADTEST_TARGET=catalog" >> "$GITHUB_ENV"
+            echo "LOADTEST_DURATION=10" >> "$GITHUB_ENV"
+            echo "LOADTEST_CONNECTIONS=5" >> "$GITHUB_ENV"
+          else
+            echo "LOADTEST_TARGET=${{ github.event.inputs.target }}" >> "$GITHUB_ENV"
+            echo "LOADTEST_DURATION=${{ github.event.inputs.duration || '15' }}" >> "$GITHUB_ENV"
+            echo "LOADTEST_CONNECTIONS=${{ github.event.inputs.connections || '10' }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Prepare results directory
+        run: mkdir -p load-test-results
+
+      - name: Run catalog scenario
+        if: env.LOADTEST_TARGET == 'catalog' || env.LOADTEST_TARGET == 'all'
+        run: |
+          npm run loadtest -- \
+            --target catalog \
+            --duration "$LOADTEST_DURATION" \
+            --connections "$LOADTEST_CONNECTIONS" \
+            --output load-test-results/catalog.json
+
+      - name: Run login scenario
+        if: env.LOADTEST_TARGET == 'login' || env.LOADTEST_TARGET == 'all'
+        run: |
+          npm run loadtest -- \
+            --target login \
+            --duration "$LOADTEST_DURATION" \
+            --connections "$LOADTEST_CONNECTIONS" \
+            --output load-test-results/login.json
+
+      - name: Build markdown summary
+        run: |
+          node scripts/load-tests/summarize-autocannon.mjs \
+            --input load-test-results \
+            --output load-test-results/summary.md
+
+      - name: Publish summary
+        if: always()
+        run: |
+          cat load-test-results/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Show generated JSON metrics
+        if: always()
+        run: |
+          echo "Generated reports:"
+          ls -la load-test-results
+          echo
+          for file in load-test-results/*.json; do
+            echo "=== ${file} ==="
+            cat "$file"
+            echo
+          done
+
+      - name: Upload load test artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: load-test-results-${{ github.run_id }}
+          path: load-test-results
+          if-no-files-found: error
