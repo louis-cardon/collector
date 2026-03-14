@@ -19,9 +19,12 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
+import { PinoLogger } from 'nestjs-pino';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { CategoriesService } from './categories.service';
 import { CategoryResponseDto } from './dto/category-response.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -30,7 +33,12 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 @ApiTags('categories')
 @Controller('categories')
 export class CategoriesController {
-  constructor(private readonly categoriesService: CategoriesService) {}
+  constructor(
+    private readonly categoriesService: CategoriesService,
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(CategoriesController.name);
+  }
 
   @Get()
   @ApiOperation({ summary: 'List available categories' })
@@ -49,9 +57,22 @@ export class CategoriesController {
   @ApiForbiddenResponse({ description: 'Admin role required' })
   @ApiConflictResponse({ description: 'Category name already exists' })
   create(
+    @CurrentUser() user: AuthenticatedUser,
     @Body() createCategoryDto: CreateCategoryDto,
   ): Promise<CategoryResponseDto> {
-    return this.categoriesService.create(createCategoryDto);
+    return this.categoriesService.create(createCategoryDto).then((category) => {
+      this.logger.info(
+        {
+          event: 'admin.category.created',
+          categoryId: category.id,
+          userId: user.id,
+          role: user.role,
+        },
+        'Admin created category',
+      );
+
+      return category;
+    });
   }
 
   @Patch(':id')

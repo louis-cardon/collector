@@ -1,4 +1,5 @@
 import { ArticleStatus, Prisma, Role } from '@prisma/client';
+import { PinoLogger } from 'nestjs-pino';
 import { ArticlesController } from './articles.controller';
 import { ArticlesService } from './articles.service';
 
@@ -39,11 +40,16 @@ describe('ArticlesController', () => {
     create: jest.fn(),
     toResponseDto: jest.fn(),
   };
+  const loggerMock = {
+    setContext: jest.fn(),
+    info: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
     controller = new ArticlesController(
       articlesServiceMock as unknown as ArticlesService,
+      loggerMock as unknown as PinoLogger,
     );
   });
 

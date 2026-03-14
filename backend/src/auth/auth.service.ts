@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { PinoLogger } from 'nestjs-pino';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
@@ -13,13 +14,30 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-  ) {}
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(AuthService.name);
+  }
 
   async login(loginDto: LoginDto): Promise<LoginResponseDto> {
-    const user = await this.validateCredentials(
-      loginDto.email,
-      loginDto.password,
-    );
+    const normalizedEmail = loginDto.email.trim().toLowerCase();
+    let user: User;
+
+    try {
+      user = await this.validateCredentials(normalizedEmail, loginDto.password);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        this.logger.warn(
+          {
+            event: 'auth.login.failed',
+            email: normalizedEmail,
+          },
+          'Login failed',
+        );
+      }
+
+      throw error;
+    }
 
     const payload: JwtPayload = {
       sub: user.id,
@@ -28,6 +46,15 @@ export class AuthService {
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
+
+    this.logger.info(
+      {
+        event: 'auth.login.succeeded',
+        userId: user.id,
+        role: user.role,
+      },
+      'Login succeeded',
+    );
 
     return {
       accessToken,

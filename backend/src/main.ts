@@ -43,6 +43,7 @@ export async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });
+  const port = process.env.PORT ?? '3001';
 
   app.enableCors({
     origin: (
@@ -80,7 +81,8 @@ export async function bootstrap() {
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, swaggerDocument);
 
-  await app.listen(process.env.PORT ?? 3001);
+  await app.listen(port, '0.0.0.0');
+  app.get(Logger).log(`Collector API listening on 0.0.0.0:${port}`);
 }
 
 if (process.env.NODE_ENV !== 'test') {

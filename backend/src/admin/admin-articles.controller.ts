@@ -17,6 +17,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
+import { PinoLogger } from 'nestjs-pino';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -31,7 +32,12 @@ import { ArticleResponseDto } from '../articles/dto/article-response.dto';
 @Roles(Role.admin)
 @Controller('admin/articles')
 export class AdminArticlesController {
-  constructor(private readonly articlesService: ArticlesService) {}
+  constructor(
+    private readonly articlesService: ArticlesService,
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(AdminArticlesController.name);
+  }
 
   @Get('pending')
   @ApiOperation({ summary: 'List pending articles for review (admin only)' })
@@ -58,6 +64,18 @@ export class AdminArticlesController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ArticleResponseDto> {
     const article = await this.articlesService.approve(id, user.id);
+
+    this.logger.info(
+      {
+        event: 'admin.article.approved',
+        articleId: article.id,
+        userId: user.id,
+        role: user.role,
+        status: article.status,
+      },
+      'Admin approved article',
+    );
+
     return this.articlesService.toResponseDto(article);
   }
 
@@ -74,6 +92,18 @@ export class AdminArticlesController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ArticleResponseDto> {
     const article = await this.articlesService.reject(id, user.id);
+
+    this.logger.info(
+      {
+        event: 'admin.article.rejected',
+        articleId: article.id,
+        userId: user.id,
+        role: user.role,
+        status: article.status,
+      },
+      'Admin rejected article',
+    );
+
     return this.articlesService.toResponseDto(article);
   }
 }

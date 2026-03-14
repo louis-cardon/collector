@@ -1,3 +1,5 @@
+import { Role } from '@prisma/client';
+import { PinoLogger } from 'nestjs-pino';
 import { CategoriesController } from './categories.controller';
 import { CategoriesService } from './categories.service';
 
@@ -9,11 +11,16 @@ describe('CategoriesController', () => {
     create: jest.fn(),
     update: jest.fn(),
   };
+  const loggerMock = {
+    setContext: jest.fn(),
+    info: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
     controller = new CategoriesController(
       categoriesServiceMock as unknown as CategoriesService,
+      loggerMock as unknown as PinoLogger,
     );
   });
 
@@ -43,11 +50,16 @@ describe('CategoriesController', () => {
       updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     });
 
-    await expect(controller.create({ name: 'Figurines' })).resolves.toEqual(
-      expect.objectContaining({
-        id: 'category-2',
-      }),
-    );
+    await expect(
+      controller.create(
+        {
+          id: 'admin-id',
+          email: 'admin@collector.local',
+          role: Role.admin,
+        },
+        { name: 'Figurines' },
+      ),
+    ).resolves.toEqual(expect.objectContaining({ id: 'category-2' }));
     expect(categoriesServiceMock.create).toHaveBeenCalledWith({
       name: 'Figurines',
     });

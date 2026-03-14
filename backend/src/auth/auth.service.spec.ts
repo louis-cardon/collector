@@ -2,6 +2,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Role, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { PinoLogger } from 'nestjs-pino';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 
@@ -9,6 +10,7 @@ describe('AuthService', () => {
   let authService: AuthService;
   let usersService: jest.Mocked<Pick<UsersService, 'findByEmail'>>;
   let jwtService: jest.Mocked<Pick<JwtService, 'signAsync'>>;
+  let logger: jest.Mocked<Pick<PinoLogger, 'setContext' | 'info' | 'warn'>>;
 
   const baseUser: User = {
     id: 'user-id',
@@ -28,9 +30,16 @@ describe('AuthService', () => {
       signAsync: jest.fn(),
     };
 
+    logger = {
+      setContext: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+    };
+
     authService = new AuthService(
       usersService as unknown as UsersService,
       jwtService as unknown as JwtService,
+      logger as unknown as PinoLogger,
     );
   });
 
