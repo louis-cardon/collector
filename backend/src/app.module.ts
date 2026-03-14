@@ -29,6 +29,24 @@ function resolveRequestId(
   return requestId;
 }
 
+function serializeRequest(req: IncomingMessage) {
+  const request = req as IncomingMessage & {
+    id?: string;
+  };
+
+  return {
+    id: request.id,
+    method: request.method,
+    url: request.url,
+  };
+}
+
+function serializeResponse(res: ServerResponse) {
+  return {
+    statusCode: res.statusCode,
+  };
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -67,6 +85,10 @@ function resolveRequestId(
         },
         customSuccessMessage: () => 'request completed',
         customErrorMessage: () => 'request failed',
+        serializers: {
+          req: serializeRequest,
+          res: serializeResponse,
+        },
         redact: {
           paths: [
             'req.headers.authorization',
