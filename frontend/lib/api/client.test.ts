@@ -109,6 +109,7 @@ describe("api client", () => {
   });
 
   it("falls back to the deployed backend origin outside development", async () => {
+    process.env.NODE_ENV = "production";
     (global.fetch as jest.Mock).mockResolvedValue(
       mockJsonResponse(200, { items: [] }),
     );

@@ -16,9 +16,9 @@ function getApiBaseUrl(): string {
   const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 
   if (!configuredBaseUrl) {
-    return process.env.NODE_ENV === "development"
-      ? API_PROXY_BASE_PATH
-      : PRODUCTION_API_ORIGIN;
+    return process.env.NODE_ENV === "production"
+      ? PRODUCTION_API_ORIGIN
+      : API_PROXY_BASE_PATH;
   }
 
   return configuredBaseUrl.endsWith("/")
