@@ -1,50 +1,89 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 1.4rem;
   margin: 0 auto;
-  max-width: 56rem;
+  max-width: 64rem;
   min-height: calc(100vh - 4.2rem);
-  padding: 2rem 1rem 3rem;
+  padding: 2.4rem 1rem 4rem;
 }
 
 .page h1 {
-  font-size: 2rem;
+  font-size: clamp(2.4rem, 5vw, 4.6rem);
+  margin-bottom: 0.85rem;
 }
 
 .hero,
 .steps,
 .accounts {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 1.25rem;
 }
 
 .hero p,
 .steps p,
 .accounts p {
-  color: #374151;
+  color: var(--muted);
   margin: 0.25rem 0 0;
+}
+
+.hero {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 244, 230, 0.92)),
+    var(--surface);
+  overflow: hidden;
+  position: relative;
+}
+
+.hero::after {
+  background: radial-gradient(circle, rgba(154, 52, 18, 0.16), transparent 68%);
+  content: "";
+  height: 16rem;
+  position: absolute;
+  right: -4rem;
+  top: -4rem;
+  width: 16rem;
+}
+
+.hero > * {
+  position: relative;
+  z-index: 1;
 }
 
 .steps h2,
 .accounts h2 {
-  font-size: 1.15rem;
-  margin: 0 0 0.5rem;
+  font-size: 1.3rem;
+  margin: 0 0 0.7rem;
 }
 
 .steps ol {
+  display: grid;
+  gap: 0.7rem;
   margin: 0;
-  padding-left: 1.15rem;
+  padding-left: 1.2rem;
 }
 
 .steps li + li {
-  margin-top: 0.35rem;
+  margin-top: 0;
 }
 
 .accounts code {
-  background: #f3f4f6;
-  border-radius: 0.25rem;
-  padding: 0.05rem 0.25rem;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  padding: 0.14rem 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .page {
+    gap: 1.7rem;
+  }
+
+  .steps,
+  .accounts {
+    padding: 1.35rem 1.45rem;
+  }
 }
