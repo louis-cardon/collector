@@ -15,7 +15,10 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 
-function resolveRequestId(req: IncomingMessage, res: ServerResponse): string {
+export function resolveRequestId(
+  req: IncomingMessage,
+  res: ServerResponse,
+): string {
   const headers = req.headers as Record<string, string | string[] | undefined>;
   const headerValue = headers['x-request-id'];
   const requestId = Array.isArray(headerValue)
@@ -26,7 +29,7 @@ function resolveRequestId(req: IncomingMessage, res: ServerResponse): string {
   return requestId;
 }
 
-function serializeRequest(req: IncomingMessage) {
+export function serializeRequest(req: IncomingMessage) {
   const request = req as IncomingMessage & {
     id?: string;
   };
@@ -38,9 +41,74 @@ function serializeRequest(req: IncomingMessage) {
   };
 }
 
-function serializeResponse(res: ServerResponse) {
+export function serializeResponse(res: ServerResponse) {
   return {
     statusCode: res.statusCode,
+  };
+}
+
+export function createPinoHttpConfig() {
+  return {
+    level: process.env.LOG_LEVEL ?? 'info',
+    genReqId: resolveRequestId,
+    customProps: (req: IncomingMessage) => {
+      const request = req as {
+        id?: string;
+        user?: {
+          id: string;
+          role: string;
+        };
+      };
+
+      return {
+        requestId: request.id,
+        userId: request.user?.id,
+        role: request.user?.role,
+      };
+    },
+    customLogLevel: (
+      _req: IncomingMessage,
+      res: ServerResponse,
+      error?: Error,
+    ) => {
+      if (error || res.statusCode >= 500) {
+        return 'error';
+      }
+
+      if (res.statusCode >= 400) {
+        return 'warn';
+      }
+
+      return 'info';
+    },
+    customSuccessMessage: () => 'request completed',
+    customErrorMessage: () => 'request failed',
+    serializers: {
+      req: serializeRequest,
+      res: serializeResponse,
+    },
+    redact: {
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.body.password',
+        'req.body.accessToken',
+        'req.body.token',
+        'res.headers["set-cookie"]',
+      ],
+      censor: '[REDACTED]',
+    },
+    transport:
+      process.env.NODE_ENV !== 'production'
+        ? {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              singleLine: true,
+              translateTime: 'SYS:standard',
+            },
+          }
+        : undefined,
   };
 }
 
@@ -51,64 +119,7 @@ function serializeResponse(res: ServerResponse) {
       envFilePath: ['.env', '.env.local'],
     }),
     LoggerModule.forRoot({
-      pinoHttp: {
-        level: process.env.LOG_LEVEL ?? 'info',
-        genReqId: resolveRequestId,
-        customProps: (req: IncomingMessage) => {
-          const request = req as {
-            id?: string;
-            user?: {
-              id: string;
-              role: string;
-            };
-          };
-
-          return {
-            requestId: request.id,
-            userId: request.user?.id,
-            role: request.user?.role,
-          };
-        },
-        customLogLevel: (_req, res, error) => {
-          if (error || res.statusCode >= 500) {
-            return 'error';
-          }
-
-          if (res.statusCode >= 400) {
-            return 'warn';
-          }
-
-          return 'info';
-        },
-        customSuccessMessage: () => 'request completed',
-        customErrorMessage: () => 'request failed',
-        serializers: {
-          req: serializeRequest,
-          res: serializeResponse,
-        },
-        redact: {
-          paths: [
-            'req.headers.authorization',
-            'req.headers.cookie',
-            'req.body.password',
-            'req.body.accessToken',
-            'req.body.token',
-            'res.headers["set-cookie"]',
-          ],
-          censor: '[REDACTED]',
-        },
-        transport:
-          process.env.NODE_ENV !== 'production'
-            ? {
-                target: 'pino-pretty',
-                options: {
-                  colorize: true,
-                  singleLine: true,
-                  translateTime: 'SYS:standard',
-                },
-              }
-            : undefined,
-      },
+      pinoHttp: createPinoHttpConfig(),
     }),
     PrismaModule,
     AuthModule,

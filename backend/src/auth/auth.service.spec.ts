@@ -64,6 +64,14 @@ describe('AuthService', () => {
         role: baseUser.role,
       },
     });
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'auth.login.succeeded',
+        userId: baseUser.id,
+        role: baseUser.role,
+      }),
+      'Login succeeded',
+    );
   });
 
   it('throws UnauthorizedException when user does not exist', async () => {
@@ -75,6 +83,13 @@ describe('AuthService', () => {
         password: 'invalid',
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'auth.login.failed',
+        email: 'missing@collector.local',
+      }),
+      'Login failed',
+    );
   });
 
   it('throws UnauthorizedException when password is invalid', async () => {
