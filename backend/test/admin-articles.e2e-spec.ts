@@ -52,6 +52,9 @@ describe('Admin Articles API (integration)', () => {
   const articles = new Map<string, Article>();
 
   const prismaServiceMock = {
+    auditLog: {
+      create: jest.fn(() => Promise.resolve({ id: 'audit-log-id' })),
+    },
     article: {
       findMany: jest.fn(
         ({
@@ -166,8 +169,8 @@ describe('Admin Articles API (integration)', () => {
       },
       {
         id: 'article-approved',
-        title: 'Carte approuvée',
-        description: 'Annonce déjà validée',
+        title: 'Carte approuvÃ©e',
+        description: 'Annonce dÃ©jÃ  validÃ©e',
         price: new Prisma.Decimal('99.00'),
         shippingCost: new Prisma.Decimal('0.00'),
         status: ArticleStatus.APPROVED,
@@ -180,8 +183,8 @@ describe('Admin Articles API (integration)', () => {
       },
       {
         id: 'article-rejected',
-        title: 'Carte rejetée',
-        description: 'Annonce déjà rejetée',
+        title: 'Carte rejetÃ©e',
+        description: 'Annonce dÃ©jÃ  rejetÃ©e',
         price: new Prisma.Decimal('14.00'),
         shippingCost: new Prisma.Decimal('3.00'),
         status: ArticleStatus.REJECTED,
@@ -237,6 +240,7 @@ describe('Admin Articles API (integration)', () => {
   beforeEach(() => {
     usersServiceMock.findByEmail.mockClear();
     usersServiceMock.findById.mockClear();
+    prismaServiceMock.auditLog.create.mockClear();
     prismaServiceMock.article.findMany.mockClear();
     prismaServiceMock.article.findUnique.mockClear();
     prismaServiceMock.article.update.mockClear();

@@ -62,6 +62,9 @@ describe('Articles API (integration)', () => {
   let articleIndex = 0;
 
   const prismaServiceMock = {
+    auditLog: {
+      create: jest.fn(() => Promise.resolve({ id: 'audit-log-id' })),
+    },
     category: {
       findUnique: jest.fn(({ where }: { where: { id: string } }) => {
         const category = categories.get(where.id);
@@ -178,6 +181,7 @@ describe('Articles API (integration)', () => {
   beforeEach(() => {
     usersServiceMock.findByEmail.mockClear();
     usersServiceMock.findById.mockClear();
+    prismaServiceMock.auditLog.create.mockClear();
     prismaServiceMock.category.findUnique.mockClear();
     prismaServiceMock.article.create.mockClear();
 
@@ -206,8 +210,8 @@ describe('Articles API (integration)', () => {
       .post('/articles')
       .set('Authorization', `Bearer ${sellerToken}`)
       .send({
-        title: 'Carte Dragon Ball édition spéciale',
-        description: 'Carte collector en excellent état, sleeve fournie.',
+        title: 'Carte Dragon Ball Ã©dition spÃ©ciale',
+        description: 'Carte collector en excellent Ã©tat, sleeve fournie.',
         price: 79.9,
         shippingCost: 4.5,
         categoryId: existingCategoryId,
@@ -249,8 +253,8 @@ describe('Articles API (integration)', () => {
     await request(httpApp)
       .post('/articles')
       .send({
-        title: 'Carte Dragon Ball édition spéciale',
-        description: 'Carte collector en excellent état, sleeve fournie.',
+        title: 'Carte Dragon Ball Ã©dition spÃ©ciale',
+        description: 'Carte collector en excellent Ã©tat, sleeve fournie.',
         price: 79.9,
         shippingCost: 4.5,
         categoryId: existingCategoryId,
@@ -266,8 +270,8 @@ describe('Articles API (integration)', () => {
       .post('/articles')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        title: 'Carte Dragon Ball édition spéciale',
-        description: 'Carte collector en excellent état, sleeve fournie.',
+        title: 'Carte Dragon Ball Ã©dition spÃ©ciale',
+        description: 'Carte collector en excellent Ã©tat, sleeve fournie.',
         price: 79.9,
         shippingCost: 4.5,
         categoryId: existingCategoryId,
@@ -282,8 +286,8 @@ describe('Articles API (integration)', () => {
       .post('/articles')
       .set('Authorization', `Bearer ${sellerToken}`)
       .send({
-        title: 'Carte Dragon Ball édition spéciale',
-        description: 'Carte collector en excellent état, sleeve fournie.',
+        title: 'Carte Dragon Ball Ã©dition spÃ©ciale',
+        description: 'Carte collector en excellent Ã©tat, sleeve fournie.',
         price: 79.9,
         shippingCost: 4.5,
         categoryId: 'missing-category',
@@ -316,8 +320,8 @@ describe('Articles API (integration)', () => {
       .post('/articles')
       .set('Authorization', `Bearer ${sellerToken}`)
       .send({
-        title: 'Carte Dragon Ball édition spéciale',
-        description: 'Carte collector en excellent état, sleeve fournie.',
+        title: 'Carte Dragon Ball Ã©dition spÃ©ciale',
+        description: 'Carte collector en excellent Ã©tat, sleeve fournie.',
         price: 79.9,
         shippingCost: 4.5,
         categoryId: existingCategoryId,

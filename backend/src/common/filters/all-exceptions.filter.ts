@@ -52,18 +52,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode === HttpStatus.UNAUTHORIZED ||
       statusCode === HttpStatus.FORBIDDEN
     ) {
-      void this.auditService.record({
-        action: AuditAction.ACCESS_DENIED,
-        actorId: request.user?.id,
-        actorRole: request.user?.role,
-        resourceType: 'HTTP_ROUTE',
-        resourceId: request.url,
-        metadata: {
-          method: request.method,
-          requestId: request.id,
-          statusCode,
-        },
-      });
+      this.recordAccessDenied(request, statusCode);
       this.logger.warn(logContext, 'Access denied');
     } else {
       this.logger.warn(logContext, 'Request failed');
@@ -106,5 +95,49 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     return exception.message;
+  }
+
+  private recordAccessDenied(
+    request: RequestWithContext,
+    statusCode: HttpStatus.UNAUTHORIZED | HttpStatus.FORBIDDEN,
+  ): void {
+    try {
+      void this.auditService
+        .record({
+          action: AuditAction.ACCESS_DENIED,
+          actorId: request.user?.id,
+          actorRole: request.user?.role,
+          resourceType: 'HTTP_ROUTE',
+          resourceId: request.url,
+          metadata: {
+            method: request.method,
+            requestId: request.id,
+            statusCode,
+          },
+        })
+        .catch((error: unknown) => {
+          this.logger.error(
+            {
+              requestId: request.id,
+              method: request.method,
+              path: request.url,
+              statusCode,
+              err: error instanceof Error ? error : undefined,
+            },
+            'Failed to persist access denied audit log',
+          );
+        });
+    } catch (error: unknown) {
+      this.logger.error(
+        {
+          requestId: request.id,
+          method: request.method,
+          path: request.url,
+          statusCode,
+          err: error instanceof Error ? error : undefined,
+        },
+        'Failed to persist access denied audit log',
+      );
+    }
   }
 }

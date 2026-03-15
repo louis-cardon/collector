@@ -151,4 +151,35 @@ describe('AllExceptionsFilter', () => {
       }),
     );
   });
+
+  it('keeps 401 responses when audit logging throws synchronously', () => {
+    const request = {
+      id: 'request-id',
+      method: 'GET',
+      url: '/auth/me',
+    };
+    const host = createArgumentsHost(request, response as unknown as Response);
+    auditService.record.mockImplementation(() => {
+      throw new TypeError('audit unavailable');
+    });
+
+    filter.catch(new UnauthorizedException('Invalid token'), host);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'request-id',
+        path: '/auth/me',
+        statusCode: 401,
+      }),
+      'Failed to persist access denied audit log',
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'request-id',
+        statusCode: 401,
+      }),
+      'Access denied',
+    );
+    expect(response.status).toHaveBeenCalledWith(401);
+  });
 });

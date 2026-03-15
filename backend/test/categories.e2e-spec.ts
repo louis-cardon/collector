@@ -55,6 +55,9 @@ describe('Categories API (integration)', () => {
     Object.assign(new Error(`Prisma error ${code}`), { code });
 
   const prismaServiceMock = {
+    auditLog: {
+      create: jest.fn(() => Promise.resolve({ id: 'audit-log-id' })),
+    },
     category: {
       create: jest.fn(({ data }: { data: { name: string } }) => {
         const existing = [...categories.values()].find(
@@ -184,6 +187,7 @@ describe('Categories API (integration)', () => {
   beforeEach(() => {
     usersServiceMock.findByEmail.mockClear();
     usersServiceMock.findById.mockClear();
+    prismaServiceMock.auditLog.create.mockClear();
     prismaServiceMock.category.create.mockClear();
     prismaServiceMock.category.findMany.mockClear();
     prismaServiceMock.category.update.mockClear();
