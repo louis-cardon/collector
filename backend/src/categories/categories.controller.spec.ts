@@ -1,5 +1,6 @@
 import { Role } from '@prisma/client';
 import { PinoLogger } from 'nestjs-pino';
+import { AuditService } from '../audit/audit.service';
 import { CategoriesController } from './categories.controller';
 import { CategoriesService } from './categories.service';
 
@@ -15,11 +16,15 @@ describe('CategoriesController', () => {
     setContext: jest.fn(),
     info: jest.fn(),
   };
+  const auditServiceMock = {
+    record: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
     controller = new CategoriesController(
       categoriesServiceMock as unknown as CategoriesService,
+      auditServiceMock as unknown as AuditService,
       loggerMock as unknown as PinoLogger,
     );
   });
@@ -63,6 +68,12 @@ describe('CategoriesController', () => {
     expect(categoriesServiceMock.create).toHaveBeenCalledWith({
       name: 'Figurines',
     });
+    expect(auditServiceMock.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'CATEGORY_CREATED',
+        resourceId: 'category-2',
+      }),
+    );
   });
 
   it('update delegates category update to CategoriesService', async () => {
@@ -74,7 +85,15 @@ describe('CategoriesController', () => {
     });
 
     await expect(
-      controller.update('category-1', { name: 'Cartes retro' }),
+      controller.update(
+        {
+          id: 'admin-id',
+          email: 'admin@collector.local',
+          role: Role.admin,
+        },
+        'category-1',
+        { name: 'Cartes retro' },
+      ),
     ).resolves.toEqual(
       expect.objectContaining({
         name: 'Cartes retro',
@@ -83,5 +102,11 @@ describe('CategoriesController', () => {
     expect(categoriesServiceMock.update).toHaveBeenCalledWith('category-1', {
       name: 'Cartes retro',
     });
+    expect(auditServiceMock.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'CATEGORY_UPDATED',
+        resourceId: 'category-1',
+      }),
+    );
   });
 });

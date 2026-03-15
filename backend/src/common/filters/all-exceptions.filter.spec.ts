@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
+import { AuditService } from '../../audit/audit.service';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 
 function createArgumentsHost(
@@ -40,6 +41,7 @@ describe('AllExceptionsFilter', () => {
   let filter: AllExceptionsFilter;
   let logger: jest.Mocked<Pick<PinoLogger, 'setContext' | 'error' | 'warn'>>;
   let response: jest.Mocked<Pick<Response, 'status' | 'json'>>;
+  let auditService: jest.Mocked<Pick<AuditService, 'record'>>;
 
   beforeEach(() => {
     logger = {
@@ -51,7 +53,13 @@ describe('AllExceptionsFilter', () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
     };
-    filter = new AllExceptionsFilter(logger as unknown as PinoLogger);
+    auditService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
+    filter = new AllExceptionsFilter(
+      logger as unknown as PinoLogger,
+      auditService as unknown as AuditService,
+    );
   });
 
   it('logs unknown exceptions as server errors with stack context', () => {
@@ -108,6 +116,13 @@ describe('AllExceptionsFilter', () => {
         statusCode: 401,
       }),
       'Access denied',
+    );
+    expect(auditService.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'ACCESS_DENIED',
+        resourceType: 'HTTP_ROUTE',
+        resourceId: '/auth/me',
+      }),
     );
     expect(response.status).toHaveBeenCalledWith(401);
   });

@@ -8,11 +8,13 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AdminModule } from './admin/admin.module';
 import { ArticlesModule } from './articles/articles.module';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { CategoriesModule } from './categories/categories.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HealthModule } from './health/health.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 export function resolveRequestId(
@@ -122,6 +124,8 @@ export function createPinoHttpConfig() {
       pinoHttp: createPinoHttpConfig(),
     }),
     PrismaModule,
+    AuditModule,
+    NotificationsModule,
     AuthModule,
     CategoriesModule,
     ArticlesModule,

@@ -18,8 +18,9 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { AuditAction, Role } from '@prisma/client';
 import { PinoLogger } from 'nestjs-pino';
+import { AuditService } from '../audit/audit.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -35,6 +36,7 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 export class CategoriesController {
   constructor(
     private readonly categoriesService: CategoriesService,
+    private readonly auditService: AuditService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(CategoriesController.name);
@@ -56,23 +58,34 @@ export class CategoriesController {
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
   @ApiForbiddenResponse({ description: 'Admin role required' })
   @ApiConflictResponse({ description: 'Category name already exists' })
-  create(
+  async create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() createCategoryDto: CreateCategoryDto,
   ): Promise<CategoryResponseDto> {
-    return this.categoriesService.create(createCategoryDto).then((category) => {
-      this.logger.info(
-        {
-          event: 'admin.category.created',
-          categoryId: category.id,
-          userId: user.id,
-          role: user.role,
-        },
-        'Admin created category',
-      );
+    const category = await this.categoriesService.create(createCategoryDto);
 
-      return category;
+    await this.auditService.record({
+      action: AuditAction.CATEGORY_CREATED,
+      actorId: user.id,
+      actorRole: user.role,
+      resourceType: 'CATEGORY',
+      resourceId: category.id,
+      metadata: {
+        name: category.name,
+      },
     });
+
+    this.logger.info(
+      {
+        event: 'admin.category.created',
+        categoryId: category.id,
+        userId: user.id,
+        role: user.role,
+      },
+      'Admin created category',
+    );
+
+    return category;
   }
 
   @Patch(':id')
@@ -85,10 +98,34 @@ export class CategoriesController {
   @ApiForbiddenResponse({ description: 'Admin role required' })
   @ApiNotFoundResponse({ description: 'Category not found' })
   @ApiConflictResponse({ description: 'Category name already exists' })
-  update(
+  async update(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ): Promise<CategoryResponseDto> {
-    return this.categoriesService.update(id, updateCategoryDto);
+    const category = await this.categoriesService.update(id, updateCategoryDto);
+
+    await this.auditService.record({
+      action: AuditAction.CATEGORY_UPDATED,
+      actorId: user.id,
+      actorRole: user.role,
+      resourceType: 'CATEGORY',
+      resourceId: category.id,
+      metadata: {
+        name: category.name,
+      },
+    });
+
+    this.logger.info(
+      {
+        event: 'admin.category.updated',
+        categoryId: category.id,
+        userId: user.id,
+        role: user.role,
+      },
+      'Admin updated category',
+    );
+
+    return category;
   }
 }

@@ -1,6 +1,8 @@
 import { ArticleStatus, Prisma, Role } from '@prisma/client';
 import { PinoLogger } from 'nestjs-pino';
+import { AuditService } from '../audit/audit.service';
 import { ArticlesService } from '../articles/articles.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AdminArticlesController } from './admin-articles.controller';
 
 describe('AdminArticlesController', () => {
@@ -46,11 +48,20 @@ describe('AdminArticlesController', () => {
     setContext: jest.fn(),
     info: jest.fn(),
   };
+  const auditServiceMock = {
+    record: jest.fn(),
+  };
+  const notificationsServiceMock = {
+    sendArticleApprovedNotification: jest.fn(),
+    sendArticleRejectedNotification: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
     controller = new AdminArticlesController(
       articlesServiceMock as unknown as ArticlesService,
+      auditServiceMock as unknown as AuditService,
+      notificationsServiceMock as unknown as NotificationsService,
       loggerMock as unknown as PinoLogger,
     );
   });
@@ -82,6 +93,15 @@ describe('AdminArticlesController', () => {
       'article-id',
       'admin-id',
     );
+    expect(auditServiceMock.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'ITEM_APPROVED',
+        resourceId: 'article-id',
+      }),
+    );
+    expect(
+      notificationsServiceMock.sendArticleApprovedNotification,
+    ).toHaveBeenCalledWith(pendingArticle);
   });
 
   it('reject delegates decision to ArticlesService with admin id', async () => {
@@ -109,6 +129,20 @@ describe('AdminArticlesController', () => {
     expect(articlesServiceMock.reject).toHaveBeenCalledWith(
       'article-id',
       'admin-id',
+    );
+    expect(auditServiceMock.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'ITEM_REJECTED',
+        resourceId: 'article-id',
+      }),
+    );
+    expect(
+      notificationsServiceMock.sendArticleRejectedNotification,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'article-id',
+        status: ArticleStatus.REJECTED,
+      }),
     );
   });
 });

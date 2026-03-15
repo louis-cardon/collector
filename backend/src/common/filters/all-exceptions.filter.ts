@@ -5,8 +5,10 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { AuditAction } from '@prisma/client';
 import { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
+import { AuditService } from '../../audit/audit.service';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 
 type RequestWithContext = Request & {
@@ -16,7 +18,10 @@ type RequestWithContext = Request & {
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  constructor(private readonly logger: PinoLogger) {
+  constructor(
+    private readonly logger: PinoLogger,
+    private readonly auditService: AuditService,
+  ) {
     this.logger.setContext(AllExceptionsFilter.name);
   }
 
@@ -47,6 +52,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode === HttpStatus.UNAUTHORIZED ||
       statusCode === HttpStatus.FORBIDDEN
     ) {
+      void this.auditService.record({
+        action: AuditAction.ACCESS_DENIED,
+        actorId: request.user?.id,
+        actorRole: request.user?.role,
+        resourceType: 'HTTP_ROUTE',
+        resourceId: request.url,
+        metadata: {
+          method: request.method,
+          requestId: request.id,
+          statusCode,
+        },
+      });
       this.logger.warn(logContext, 'Access denied');
     } else {
       this.logger.warn(logContext, 'Request failed');
