@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Role, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PinoLogger } from 'nestjs-pino';
+import { AuditService } from '../audit/audit.service';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 
@@ -10,7 +11,10 @@ describe('AuthService', () => {
   let authService: AuthService;
   let usersService: jest.Mocked<Pick<UsersService, 'findByEmail'>>;
   let jwtService: jest.Mocked<Pick<JwtService, 'signAsync'>>;
-  let logger: jest.Mocked<Pick<PinoLogger, 'setContext' | 'info' | 'warn'>>;
+  let auditService: jest.Mocked<Pick<AuditService, 'record'>>;
+  let logger: jest.Mocked<
+    Pick<PinoLogger, 'setContext' | 'error' | 'info' | 'warn'>
+  >;
 
   const baseUser: User = {
     id: 'user-id',
@@ -30,8 +34,13 @@ describe('AuthService', () => {
       signAsync: jest.fn(),
     };
 
+    auditService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
+
     logger = {
       setContext: jest.fn(),
+      error: jest.fn(),
       info: jest.fn(),
       warn: jest.fn(),
     };
@@ -39,6 +48,7 @@ describe('AuthService', () => {
     authService = new AuthService(
       usersService as unknown as UsersService,
       jwtService as unknown as JwtService,
+      auditService as unknown as AuditService,
       logger as unknown as PinoLogger,
     );
   });
@@ -72,6 +82,14 @@ describe('AuthService', () => {
       }),
       'Login succeeded',
     );
+    expect(auditService.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'LOGIN_SUCCEEDED',
+        actorId: baseUser.id,
+        actorRole: baseUser.role,
+        resourceType: 'AUTH_SESSION',
+      }),
+    );
   });
 
   it('throws UnauthorizedException when user does not exist', async () => {
@@ -90,6 +108,23 @@ describe('AuthService', () => {
       }),
       'Login failed',
     );
+    const failedAuditCall = auditService.record.mock.calls[0]?.[0] as
+      | {
+          action: string;
+          resourceType: string;
+          metadata?: {
+            email?: string;
+          };
+        }
+      | undefined;
+
+    expect(failedAuditCall).toMatchObject({
+      action: 'LOGIN_FAILED',
+      resourceType: 'AUTH_SESSION',
+      metadata: {
+        email: 'missing@collector.local',
+      },
+    });
   });
 
   it('throws UnauthorizedException when password is invalid', async () => {

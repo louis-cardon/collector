@@ -1,5 +1,6 @@
 import { ArticleStatus, Prisma, Role } from '@prisma/client';
 import { PinoLogger } from 'nestjs-pino';
+import { AuditService } from '../audit/audit.service';
 import { ArticlesController } from './articles.controller';
 import { ArticlesService } from './articles.service';
 
@@ -40,6 +41,9 @@ describe('ArticlesController', () => {
     create: jest.fn(),
     toResponseDto: jest.fn(),
   };
+  const auditServiceMock = {
+    record: jest.fn(),
+  };
   const loggerMock = {
     setContext: jest.fn(),
     info: jest.fn(),
@@ -49,6 +53,7 @@ describe('ArticlesController', () => {
     jest.clearAllMocks();
     controller = new ArticlesController(
       articlesServiceMock as unknown as ArticlesService,
+      auditServiceMock as unknown as AuditService,
       loggerMock as unknown as PinoLogger,
     );
   });
@@ -86,6 +91,13 @@ describe('ArticlesController', () => {
     );
     expect(articlesServiceMock.toResponseDto).toHaveBeenCalledWith(
       articleEntity,
+    );
+    expect(auditServiceMock.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'ITEM_CREATED',
+        actorId: 'seller-id',
+        resourceId: 'article-id',
+      }),
     );
   });
 });

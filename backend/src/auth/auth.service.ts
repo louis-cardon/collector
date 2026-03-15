@@ -1,8 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { AuditAction, Role, User } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PinoLogger } from 'nestjs-pino';
+import { AuditService } from '../audit/audit.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
@@ -14,6 +15,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly auditService: AuditService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(AuthService.name);
@@ -27,6 +29,7 @@ export class AuthService {
       user = await this.validateCredentials(normalizedEmail, loginDto.password);
     } catch (error) {
       if (error instanceof UnauthorizedException) {
+        await this.recordLoginFailed(normalizedEmail);
         this.logger.warn(
           {
             event: 'auth.login.failed',
@@ -46,6 +49,7 @@ export class AuthService {
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
+    await this.recordLoginSucceeded(user.id, user.role, normalizedEmail);
 
     this.logger.info(
       {
@@ -60,6 +64,56 @@ export class AuthService {
       accessToken,
       user: this.toAuthUserDto(user),
     };
+  }
+
+  private async recordLoginSucceeded(
+    userId: string,
+    role: Role,
+    email: string,
+  ): Promise<void> {
+    try {
+      await this.auditService.record({
+        action: AuditAction.LOGIN_SUCCEEDED,
+        actorId: userId,
+        actorRole: role,
+        resourceType: 'AUTH_SESSION',
+        resourceId: userId,
+        metadata: {
+          email,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        {
+          event: 'audit.login.succeeded.failed',
+          userId,
+          role,
+          err: error instanceof Error ? error : undefined,
+        },
+        'Unable to persist login success audit log',
+      );
+    }
+  }
+
+  private async recordLoginFailed(email: string): Promise<void> {
+    try {
+      await this.auditService.record({
+        action: AuditAction.LOGIN_FAILED,
+        resourceType: 'AUTH_SESSION',
+        metadata: {
+          email,
+          reason: 'INVALID_CREDENTIALS',
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        {
+          event: 'audit.login.failed.failed',
+          err: error instanceof Error ? error : undefined,
+        },
+        'Unable to persist login failure audit log',
+      );
+    }
   }
 
   private async validateCredentials(

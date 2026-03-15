@@ -8,8 +8,9 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { AuditAction, Role } from '@prisma/client';
 import { PinoLogger } from 'nestjs-pino';
+import { AuditService } from '../audit/audit.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -24,6 +25,7 @@ import { CreateArticleDto } from './dto/create-article.dto';
 export class ArticlesController {
   constructor(
     private readonly articlesService: ArticlesService,
+    private readonly auditService: AuditService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(ArticlesController.name);
@@ -46,6 +48,18 @@ export class ArticlesController {
       createArticleDto,
       user.id,
     );
+    await this.auditService.record({
+      action: AuditAction.ITEM_CREATED,
+      actorId: user.id,
+      actorRole: user.role,
+      resourceType: 'ARTICLE',
+      resourceId: article.id,
+      metadata: {
+        categoryId: article.categoryId,
+        status: article.status,
+        title: article.title,
+      },
+    });
 
     this.logger.info(
       {

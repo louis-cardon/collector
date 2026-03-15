@@ -9,3 +9,12 @@ export type AuditRecordInput = {
   metadata?: Prisma.InputJsonValue;
   timestamp?: Date;
 };
+
+export type ListAuditLogsInput = {
+  action?: AuditAction;
+  actorId?: string;
+  resourceType?: string;
+  resourceId?: string;
+  page: number;
+  limit: number;
+};

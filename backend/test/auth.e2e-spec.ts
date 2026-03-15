@@ -6,6 +6,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { AuthUserDto } from '../src/auth/dto/auth-user.dto';
 import { LoginResponseDto } from '../src/auth/dto/login-response.dto';
+import { PrismaService } from '../src/prisma/prisma.service';
 import { UsersService } from '../src/users/users.service';
 
 describe('Auth API (integration)', () => {
@@ -48,6 +49,11 @@ describe('Auth API (integration)', () => {
       Promise.resolve(usersById.get(id) ?? null),
     ),
   };
+  const prismaServiceMock = {
+    auditLog: {
+      create: jest.fn(() => Promise.resolve({ id: 'audit-log-id' })),
+    },
+  };
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'integration-test-secret';
@@ -57,6 +63,8 @@ describe('Auth API (integration)', () => {
     })
       .overrideProvider(UsersService)
       .useValue(usersServiceMock)
+      .overrideProvider(PrismaService)
+      .useValue(prismaServiceMock)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -85,6 +93,7 @@ describe('Auth API (integration)', () => {
   beforeEach(() => {
     usersServiceMock.findByEmail.mockClear();
     usersServiceMock.findById.mockClear();
+    prismaServiceMock.auditLog.create.mockClear();
   });
 
   it('POST /auth/login returns token when credentials are valid', async () => {
