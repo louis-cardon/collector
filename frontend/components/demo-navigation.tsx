@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/login", label: "Login" },
   { href: "/seller/articles/new", label: "Creation seller" },
   { href: "/admin/articles/pending", label: "Validation admin" },
+  { href: "/admin/categories", label: "Categories admin" },
 ];
 
 export default function DemoNavigation() {

@@ -18,6 +18,14 @@ export type Category = {
   updatedAt: string;
 };
 
+export type CreateCategoryPayload = {
+  name: string;
+};
+
+export type UpdateCategoryPayload = {
+  name: string;
+};
+
 export type AuthUser = {
   id: string;
   email: string;
