@@ -7,3 +7,5 @@ export type NotificationEmail = {
 export interface EmailNotificationProvider {
   send(email: NotificationEmail): Promise<void>;
 }
+
+export type NotificationProviderName = 'logger' | 'resend';

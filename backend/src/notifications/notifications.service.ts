@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Article, ArticleStatus } from '@prisma/client';
 import { PinoLogger } from 'nestjs-pino';
 import { UsersService } from '../users/users.service';
@@ -9,6 +10,7 @@ import type { EmailNotificationProvider } from './notifications.types';
 export class NotificationsService {
   constructor(
     private readonly usersService: UsersService,
+    private readonly configService: ConfigService,
     private readonly logger: PinoLogger,
     @Inject(EMAIL_NOTIFICATION_PROVIDER)
     private readonly provider: EmailNotificationProvider,
@@ -20,9 +22,10 @@ export class NotificationsService {
     article: Pick<Article, 'id' | 'title' | 'sellerId'>,
   ): Promise<void> {
     const recipient = await this.resolveRecipient(article.sellerId);
+    const deliveryAddress = this.resolveDeliveryAddress(recipient.email);
 
     await this.provider.send({
-      to: recipient.email,
+      to: deliveryAddress,
       subject: `Annonce approuvee: ${article.title}`,
       text: `Votre annonce "${article.title}" (${article.id}) a ete approuvee.`,
     });
@@ -31,6 +34,8 @@ export class NotificationsService {
       {
         event: 'notification.article.approved',
         articleId: article.id,
+        deliveryAddress,
+        recipientEmail: recipient.email,
         sellerId: article.sellerId,
         status: ArticleStatus.APPROVED,
       },
@@ -42,9 +47,10 @@ export class NotificationsService {
     article: Pick<Article, 'id' | 'title' | 'sellerId'>,
   ): Promise<void> {
     const recipient = await this.resolveRecipient(article.sellerId);
+    const deliveryAddress = this.resolveDeliveryAddress(recipient.email);
 
     await this.provider.send({
-      to: recipient.email,
+      to: deliveryAddress,
       subject: `Annonce rejetee: ${article.title}`,
       text: `Votre annonce "${article.title}" (${article.id}) a ete rejetee.`,
     });
@@ -53,6 +59,8 @@ export class NotificationsService {
       {
         event: 'notification.article.rejected',
         articleId: article.id,
+        deliveryAddress,
+        recipientEmail: recipient.email,
         sellerId: article.sellerId,
         status: ArticleStatus.REJECTED,
       },
@@ -75,5 +83,13 @@ export class NotificationsService {
     }
 
     return seller;
+  }
+
+  private resolveDeliveryAddress(recipientEmail: string): string {
+    const overrideAddress = this.configService
+      .get<string>('NOTIFICATIONS_TEST_RECIPIENT')
+      ?.trim();
+
+    return overrideAddress || recipientEmail;
   }
 }
