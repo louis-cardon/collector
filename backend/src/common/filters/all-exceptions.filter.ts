@@ -101,9 +101,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     request: RequestWithContext,
     statusCode: HttpStatus.UNAUTHORIZED | HttpStatus.FORBIDDEN,
   ): void {
-    try {
-      void this.auditService
-        .record({
+    void Promise.resolve()
+      .then(() =>
+        this.auditService.record({
           action: AuditAction.ACCESS_DENIED,
           actorId: request.user?.id,
           actorRole: request.user?.role,
@@ -114,30 +114,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
             requestId: request.id,
             statusCode,
           },
-        })
-        .catch((error: unknown) => {
-          this.logger.error(
-            {
-              requestId: request.id,
-              method: request.method,
-              path: request.url,
-              statusCode,
-              err: error instanceof Error ? error : undefined,
-            },
-            'Failed to persist access denied audit log',
-          );
-        });
-    } catch (error: unknown) {
-      this.logger.error(
-        {
-          requestId: request.id,
-          method: request.method,
-          path: request.url,
-          statusCode,
-          err: error instanceof Error ? error : undefined,
-        },
-        'Failed to persist access denied audit log',
-      );
-    }
+        }),
+      )
+      .catch((error: unknown) => {
+        this.logger.error(
+          {
+            requestId: request.id,
+            method: request.method,
+            path: request.url,
+            statusCode,
+            err: error instanceof Error ? error : undefined,
+          },
+          'Failed to persist access denied audit log',
+        );
+      });
   }
 }

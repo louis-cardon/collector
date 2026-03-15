@@ -8,6 +8,12 @@ import { PinoLogger } from 'nestjs-pino';
 import { AuditService } from '../../audit/audit.service';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 
+function flushAsyncWork(): Promise<void> {
+  return new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+}
+
 function createArgumentsHost(
   request: Record<string, unknown>,
   response: Response,
@@ -94,7 +100,7 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
-  it('logs unauthorized exceptions as access denied', () => {
+  it('logs unauthorized exceptions as access denied', async () => {
     const request = {
       id: 'request-id',
       method: 'GET',
@@ -107,6 +113,7 @@ describe('AllExceptionsFilter', () => {
     const host = createArgumentsHost(request, response as unknown as Response);
 
     filter.catch(new UnauthorizedException('Invalid token'), host);
+    await flushAsyncWork();
 
     expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -152,7 +159,7 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
-  it('keeps 401 responses when audit logging throws synchronously', () => {
+  it('keeps 401 responses when audit logging throws synchronously', async () => {
     const request = {
       id: 'request-id',
       method: 'GET',
@@ -164,6 +171,7 @@ describe('AllExceptionsFilter', () => {
     });
 
     filter.catch(new UnauthorizedException('Invalid token'), host);
+    await flushAsyncWork();
 
     expect(logger.error).toHaveBeenCalledWith(
       expect.objectContaining({
