@@ -4,20 +4,30 @@
   "private": true,
   "workspaces": [
     "frontend",
-    "backend"
+    "backend",
+    "services/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w frontend\" \"npm run dev -w backend\"",
+    "dev": "concurrently \"npm run dev -w frontend\" \"npm run dev -w services/api-gateway\" \"npm run dev -w services/auth-service\" \"npm run dev -w services/catalog-service\" \"npm run dev -w services/article-service\" \"npm run dev -w services/audit-service\" \"npm run dev -w services/notification-service\"",
+    "dev:microservices": "concurrently \"npm run dev -w services/api-gateway\" \"npm run dev -w services/auth-service\" \"npm run dev -w services/catalog-service\" \"npm run dev -w services/article-service\" \"npm run dev -w services/audit-service\" \"npm run dev -w services/notification-service\"",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
-    "test:e2e": "npm run test:e2e -w backend",
+    "test:e2e": "npm run test:e2e -w frontend",
     "test:e2e:playwright": "npm run test:e2e -w frontend",
+    "docker:build:api-gateway": "docker build -f services/api-gateway/Dockerfile -t collector/api-gateway:latest .",
+    "docker:build:auth-service": "docker build -f services/auth-service/Dockerfile -t collector/auth-service:latest .",
+    "docker:build:catalog-service": "docker build -f services/catalog-service/Dockerfile -t collector/catalog-service:latest .",
+    "docker:build:article-service": "docker build -f services/article-service/Dockerfile -t collector/article-service:latest .",
+    "docker:build:audit-service": "docker build -f services/audit-service/Dockerfile -t collector/audit-service:latest .",
+    "docker:build:notification-service": "docker build -f services/notification-service/Dockerfile -t collector/notification-service:latest .",
     "loadtest": "node scripts/load-tests/run-autocannon.mjs",
     "loadtest:catalog": "npm run loadtest -- --target catalog",
     "loadtest:login": "npm run loadtest -- --target login",
-    "loadtest:summary": "node scripts/load-tests/summarize-autocannon.mjs --input load-test-results"
+    "loadtest:summary": "node scripts/load-tests/summarize-autocannon.mjs --input load-test-results",
+    "docker:build:frontend": "docker build -f frontend/Dockerfile -t collector/frontend:latest .",
+    "docker:build:microservices": "npm run docker:build:api-gateway && npm run docker:build:auth-service && npm run docker:build:catalog-service && npm run docker:build:article-service && npm run docker:build:audit-service && npm run docker:build:notification-service && npm run docker:build:frontend"
   },
   "devDependencies": {
     "autocannon": "^8.0.0",

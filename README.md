@@ -79,11 +79,24 @@ Ce projet est volontairement limité à un périmètre réduit mais cohérent, a
 ├─ .gitignore
 ├─ package.json
 ├─ docs/
+├─ services/
 ├─ frontend/
 ├─ backend/
 └─ .github/
    └─ workflows/
 ```
+
+## Architecture microservices
+
+Une nouvelle architecture `services/` est introduite et constitue desormais la topologie de reference pour l'execution locale et Kubernetes :
+- `services/api-gateway` : point d'entree unique pour le frontend
+- `services/auth-service` : login, JWT, utilisateur courant
+- `services/catalog-service` : catalogue public et categories
+- `services/article-service` : creation d'annonce et revue admin
+- `services/audit-service` : journal d'audit
+- `services/notification-service` : emails / notifications
+
+Le dossier `backend/` reste present comme reference fonctionnelle et comme source Prisma tant que la migration complete n'est pas terminee, mais l'application s'utilise desormais via `services/`.
 
 ## Démarrage
 
@@ -91,16 +104,25 @@ Ce projet est volontairement limité à un périmètre réduit mais cohérent, a
 npm install
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env.local
+cp services/api-gateway/.env.example services/api-gateway/.env
+cp services/auth-service/.env.example services/auth-service/.env
+cp services/catalog-service/.env.example services/catalog-service/.env
+cp services/article-service/.env.example services/article-service/.env
+cp services/audit-service/.env.example services/audit-service/.env
+cp services/notification-service/.env.example services/notification-service/.env
 docker compose up -d
 npm run prisma:migrate:deploy -w backend
 npm run prisma:seed -w backend
 npm run dev
 ```
 
+Les variables d'environnement de chaque service sont documentees dans `services/*/.env.example`.
+
 ## Variables d’environnement
 
-- backend : fichier local attendu `backend/.env`
+- backend : fichier local attendu `backend/.env` pour Prisma / migration transitoire
 - frontend : fichier local attendu `frontend/.env.local`
+- microservices : fichiers locaux attendus `services/*/.env`
 
 Exemples fournis :
 - `backend/.env.example`
@@ -108,7 +130,7 @@ Exemples fournis :
 
 ## Proxy frontend -> backend (dev)
 
-En développement, Next.js proxy les routes frontend `/api/*` vers le backend
+En développement, Next.js proxy les routes frontend `/api/*` vers l'API Gateway
 `http://127.0.0.1:3001/*` via `frontend/next.config.ts`.
 
 Conséquence :
@@ -135,13 +157,81 @@ npm run prisma:seed -w backend
 
 ## Scripts racine
 
-- `npm run dev` : lance Next.js + NestJS en parallèle
+- `npm run dev` : lance Next.js + l'ensemble des microservices
+- `npm run dev:microservices` : lance uniquement les microservices
 - `npm run build` : build de tous les workspaces
 - `npm run lint` : lint de tous les workspaces
 - `npm run test` : tests unitaires/intégration de tous les workspaces
 - `npm run test:coverage` : couverture de tests
-- `npm run test:e2e` : tests e2e API backend (Supertest)
+- `npm run test:e2e` : tests end-to-end Playwright
 - `npm run test:e2e:playwright` : socle e2e Playwright frontend
+- `npm run docker:build:microservices` : construit les images frontend + microservices
+
+## Kubernetes
+
+Le dossier `infra/k8s` deploie maintenant :
+- `frontend`
+- `api-gateway`
+- `auth-service`
+- `catalog-service`
+- `article-service`
+- `audit-service`
+- `notification-service`
+- `postgres`
+
+Pour Minikube :
+
+```bash
+minikube start
+minikube addons enable ingress
+eval "$(minikube docker-env)"
+npm run docker:build:microservices
+npm run k8s:apply:dev
+kubectl get pods -n collector-dev
+minikube ip
+```
+
+## Deploiement Vercel + Render + Neon
+
+Cette architecture peut etre deployee sans Kubernetes :
+- `frontend` sur Vercel
+- `api-gateway` et les 5 microservices sur Render
+- PostgreSQL sur Neon
+
+### Vercel
+
+Configurer un projet Vercel avec :
+- `Root Directory` : `frontend`
+- commande de build par defaut Next.js
+- variable d'environnement :
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://collector-api-gateway.onrender.com
+```
+
+### Render
+
+Le fichier [render.yaml](/Users/louiscardon/Documents/Projet/collector/render.yaml) decrit les 6 services :
+- `collector-api-gateway`
+- `collector-auth-service`
+- `collector-catalog-service`
+- `collector-article-service`
+- `collector-audit-service`
+- `collector-notification-service`
+
+Chaque service utilise son Dockerfile dans `services/*/Dockerfile`.
+
+Variables sensibles a renseigner dans Render :
+- `DATABASE_URL` : URL Neon
+- `JWT_SECRET`
+- `INTERNAL_SERVICE_TOKEN`
+- `CORS_ALLOWED_ORIGINS`
+- `RESEND_API_KEY`
+- `NOTIFICATIONS_FROM_EMAIL`
+
+### Neon
+
+Neon reste la base PostgreSQL de reference. A ce stade, les microservices partagent encore le meme `DATABASE_URL`, le temps de finaliser l'extraction Prisma hors de `backend/`.
 
 ## CI/CD GitHub Actions
 
