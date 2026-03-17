@@ -16,7 +16,7 @@ export class AuditService {
         actorRole: data.actorRole as any,
         resourceType: data.resourceType,
         resourceId: data.resourceId,
-        metadata: data.metadata,
+        metadata: data.metadata as Prisma.InputJsonValue | undefined,
       },
     });
   }

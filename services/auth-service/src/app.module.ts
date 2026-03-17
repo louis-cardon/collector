@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { LoggerModule } from 'nestjs-pino';
+import type { SignOptions } from 'jsonwebtoken';
 import { AuditClientService } from './audit/audit-client.service';
 import { AuthController } from './auth/auth.controller';
 import { AuthService } from './auth/auth.service';
@@ -26,8 +27,9 @@ import { UsersService } from './users/users.service';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET') ?? 'change-me',
         signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN') ?? '1h',
-        },
+          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') ??
+            '1h') as SignOptions['expiresIn'],
+        } as SignOptions,
       }),
     }),
   ],
