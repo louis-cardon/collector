@@ -1,8 +1,9 @@
-import { IsIn, IsObject, IsOptional, IsString } from 'class-validator';
+import { AuditAction } from "@prisma/client";
+import { IsEnum, IsObject, IsOptional, IsString } from "class-validator";
 
 export class CreateAuditLogDto {
-  @IsString()
-  action!: string;
+  @IsEnum(AuditAction)
+  action!: AuditAction;
 
   @IsOptional()
   @IsString()

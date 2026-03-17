@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { ArticleStatus, Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { ArticleStatus, Prisma } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class CatalogService {
@@ -9,7 +9,7 @@ export class CatalogService {
   findCategories() {
     return this.prisma.category.findMany({
       orderBy: {
-        name: 'asc',
+        name: "asc",
       },
     });
   }
@@ -26,7 +26,7 @@ export class CatalogService {
     return this.prisma.article.findMany({
       where,
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
   }
@@ -40,7 +40,7 @@ export class CatalogService {
     });
 
     if (!article) {
-      throw new NotFoundException('Catalog article not found');
+      throw new NotFoundException("Catalog article not found");
     }
 
     return article;

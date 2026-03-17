@@ -3,10 +3,10 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { ArticleStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateArticleDto } from './dto/create-article.dto';
+} from "@nestjs/common";
+import { ArticleStatus } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateArticleDto } from "./dto/create-article.dto";
 
 @Injectable()
 export class ArticlesService {
@@ -23,7 +23,7 @@ export class ArticlesService {
     });
 
     if (!category) {
-      throw new BadRequestException('Category does not exist');
+      throw new BadRequestException("Category does not exist");
     }
 
     return this.prisma.article.create({
@@ -45,7 +45,7 @@ export class ArticlesService {
         status: ArticleStatus.PENDING_REVIEW,
       },
       orderBy: {
-        createdAt: 'asc',
+        createdAt: "asc",
       },
     });
   }
@@ -72,11 +72,11 @@ export class ArticlesService {
     });
 
     if (!article) {
-      throw new NotFoundException('Article not found');
+      throw new NotFoundException("Article not found");
     }
 
     if (article.status !== ArticleStatus.PENDING_REVIEW) {
-      throw new ConflictException('Article already reviewed');
+      throw new ConflictException("Article already reviewed");
     }
 
     return this.prisma.article.update({

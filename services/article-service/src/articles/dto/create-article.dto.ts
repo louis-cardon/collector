@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsNumber, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import { Type } from "class-transformer";
+import { IsNumber, IsString, MaxLength, Min, MinLength } from "class-validator";
 
 export class CreateArticleDto {
   @IsString()

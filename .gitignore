@@ -20,6 +20,7 @@ pnpm-debug.log*
 .env
 .env.*
 !backend/.env.example
+.env.compose.example
 !frontend/.env.example
 !services/**/.env.example
 
@@ -55,6 +56,7 @@ playwright-report/
 test-results/
 blob-report/
 load-test-results/
+reports/security/
 
 # Cache
 .cache/

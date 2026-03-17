@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Resend } from 'resend';
-import type { EmailNotificationProvider } from '../notifications.types';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Resend } from "resend";
+import type { EmailNotificationProvider } from "../notifications.types";
 
 @Injectable()
 export class ResendEmailProvider implements EmailNotificationProvider {
@@ -12,7 +12,7 @@ export class ResendEmailProvider implements EmailNotificationProvider {
     subject: string;
     text: string;
   }): Promise<void> {
-    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    const apiKey = this.configService.get<string>("RESEND_API_KEY");
 
     if (!apiKey) {
       return;
@@ -22,8 +22,8 @@ export class ResendEmailProvider implements EmailNotificationProvider {
 
     await resend.emails.send({
       from:
-        this.configService.get<string>('NOTIFICATIONS_FROM_EMAIL') ??
-        'no-reply@collector.local',
+        this.configService.get<string>("NOTIFICATIONS_FROM_EMAIL") ??
+        "no-reply@collector.local",
       to: input.to,
       subject: input.subject,
       text: input.text,
