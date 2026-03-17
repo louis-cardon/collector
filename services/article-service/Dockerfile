@@ -11,6 +11,7 @@ COPY services/catalog-service/package.json services/catalog-service/package.json
 COPY services/article-service/package.json services/article-service/package.json
 COPY services/audit-service/package.json services/audit-service/package.json
 COPY services/notification-service/package.json services/notification-service/package.json
+COPY backend/prisma backend/prisma
 
 RUN npm ci
 

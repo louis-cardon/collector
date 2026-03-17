@@ -7,13 +7,6 @@ spec:
     - host: collector.dev.local
       http:
         paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: api-gateway
-                port:
-                  number: 3001
           - path: /docs
             pathType: Prefix
             backend:
@@ -28,3 +21,20 @@ spec:
                 name: frontend
                 port:
                   number: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: collector-api
+spec:
+  rules:
+    - host: collector.dev.local
+      http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 3001

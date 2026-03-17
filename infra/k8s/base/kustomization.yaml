@@ -19,4 +19,5 @@ resources:
   - notification-service-service.yaml
   - frontend-deployment.yaml
   - frontend-service.yaml
+  - api-ingress.yaml
   - ingress.yaml

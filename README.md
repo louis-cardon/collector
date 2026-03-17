@@ -184,12 +184,99 @@ Pour Minikube :
 ```bash
 minikube start
 minikube addons enable ingress
-eval "$(minikube docker-env)"
-npm run docker:build:microservices
+npm run minikube:build-images
 npm run k8s:apply:dev
 kubectl get pods -n collector-dev
 minikube ip
 ```
+
+Scripts utiles :
+- `npm run minikube:build-images` : build les images directement dans le daemon Docker de Minikube
+- `npm run k8s:apply:dev` : applique l'overlay `dev`
+- `npm run k8s:apply:preprod` : applique l'overlay `preprod`
+- `npm run k8s:apply:prod` : applique l'overlay `prod`
+
+Si tu utilises l'ingress Minikube en local, ajoute ensuite une entree `/etc/hosts` avec l'IP retournee par `minikube ip` :
+
+```text
+<minikube-ip> collector.dev.local
+```
+
+## Minikube + Argo CD
+
+Le depot contient maintenant un socle GitOps dans [infra/argocd](/Users/louiscardon/Documents/Projet/collector/infra/argocd) :
+- [project.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/project.yaml) : projet Argo CD autorisant les environnements `dev`, `preprod`, `prod`
+- [apps/collector-dev.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/apps/collector-dev.yaml) : application Argo pour l'overlay `dev`
+- [apps/collector-preprod.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/apps/collector-preprod.yaml) : application Argo pour l'overlay `preprod`
+- [apps/collector-prod.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/apps/collector-prod.yaml) : application Argo pour l'overlay `prod`
+- [root-dev.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/root-dev.yaml) : app-of-apps local leger, recommande sur Minikube
+- [root-all-envs.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/root-all-envs.yaml) : app-of-apps pour gerer `dev + preprod + prod`
+
+Flux recommande sur Minikube :
+
+```bash
+minikube start
+minikube addons enable ingress
+npm run minikube:build-images
+npm run argocd:install
+npm run argocd:bootstrap:dev
+kubectl get applications -n argocd
+npm run argocd:password
+npm run argocd:ui
+```
+
+Ensuite :
+- UI Argo CD : [https://localhost:8080](https://localhost:8080)
+- utilisateur : `admin`
+- mot de passe initial : `npm run argocd:password`
+
+Pour gerer les trois environnements avec Argo CD :
+
+```bash
+npm run argocd:bootstrap:all-envs
+```
+
+Points d'attention :
+- `collector-dev` est le meilleur point de depart sur Minikube ; `preprod` et `prod` consomment davantage de ressources
+- les applications Argo CD pointent sur le repo GitHub `https://github.com/louis-cardon/collector.git`
+- `collector-preprod` suit la branche `preprod`, `collector-prod` suit `main`, `collector-dev` suit `develop`
+- les scripts `argocd:bootstrap:*` appliquent les objets Argo CD depuis le workspace local ; le `root app` reste disponible si tu veux ensuite un vrai mode app-of-apps apres push
+
+## GitHub Actions + GHCR + Argo CD
+
+Le depot fournit maintenant un flux GitOps complet :
+- [ci.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ci.yml) : qualite, build et tests sur `develop`, `preprod`, `main`
+- [ghcr-argocd.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ghcr-argocd.yml) : build/push des images Docker vers GHCR puis mise a jour des tags dans l'overlay Kustomize de la branche
+
+Strategie de branche :
+- `develop` -> overlay [dev](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/dev)
+- `preprod` -> overlay [preprod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/preprod)
+- `main` -> overlay [prod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/prod)
+
+Cycle de deploiement :
+1. push sur `develop`, `preprod` ou `main`
+2. GitHub Actions build les 7 images et les pousse sur `ghcr.io`
+3. le workflow remplace les tags d'images dans le `kustomization.yaml` de l'overlay cible avec un tag immuable de type `<branche>-<sha>`
+4. Argo CD detecte le commit de manifest et synchronise le cluster
+
+Images publiees :
+- `ghcr.io/louis-cardon/collector-api-gateway`
+- `ghcr.io/louis-cardon/collector-auth-service`
+- `ghcr.io/louis-cardon/collector-catalog-service`
+- `ghcr.io/louis-cardon/collector-article-service`
+- `ghcr.io/louis-cardon/collector-audit-service`
+- `ghcr.io/louis-cardon/collector-notification-service`
+- `ghcr.io/louis-cardon/collector-frontend`
+
+Configuration GitHub a faire :
+- autoriser les GitHub Actions a lire et ecrire dans le repository
+- laisser `GITHUB_TOKEN` avec permission `packages: write`
+- rendre les packages GHCR publics si tu veux eviter un `imagePullSecret` dans le cluster
+
+Verification :
+- apres un push, verifier l'onglet `Actions`
+- verifier les packages dans l'onglet `Packages`
+- verifier ensuite les applications Argo CD dans `argocd`
 
 ## Deploiement Vercel + Render + Neon
 

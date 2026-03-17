@@ -1,6 +1,7 @@
 FROM node:22-alpine AS builder
 
 WORKDIR /app
+ENV NEXT_PUBLIC_API_BASE_URL=/api
 
 COPY package.json package-lock.json ./
 COPY frontend/package.json frontend/package.json
@@ -15,9 +16,9 @@ COPY backend/prisma backend/prisma
 
 RUN npm ci
 
-COPY services/api-gateway services/api-gateway
+COPY frontend frontend
 
-RUN npm run build -w services/api-gateway
+RUN npm run build -w frontend
 
 FROM node:22-alpine AS runner
 
@@ -26,8 +27,8 @@ ENV NODE_ENV=production
 
 COPY --from=builder /app /app
 
-WORKDIR /app/services/api-gateway
+WORKDIR /app/frontend
 
-EXPOSE 3001
+EXPOSE 3000
 
-CMD ["node", "dist/main"]
+CMD ["npm", "run", "start"]

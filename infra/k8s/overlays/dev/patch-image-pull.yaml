@@ -7,7 +7,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: auth-service
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
         - name: catalog-service
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -40,7 +40,7 @@ spec:
     spec:
       containers:
         - name: article-service
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
         - name: audit-service
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -62,7 +62,7 @@ spec:
     spec:
       containers:
         - name: notification-service
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -73,4 +73,4 @@ spec:
     spec:
       containers:
         - name: frontend
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
