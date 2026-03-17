@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { AuditService } from './audit.service';
-import { CreateAuditLogDto } from './dto/create-audit-log.dto';
-import { ListAuditLogsQueryDto } from './dto/list-audit-logs-query.dto';
-import { InternalAuthGuard } from './internal/internal-auth.guard';
+import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
+import { AuditService } from "./audit.service";
+import { CreateAuditLogDto } from "./dto/create-audit-log.dto";
+import { ListAuditLogsQueryDto } from "./dto/list-audit-logs-query.dto";
+import { InternalAuthGuard } from "./internal/internal-auth.guard";
 
-@Controller('internal/audit-logs')
+@Controller("internal/audit-logs")
 @UseGuards(InternalAuthGuard)
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
