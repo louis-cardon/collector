@@ -21,6 +21,7 @@ pnpm-debug.log*
 .env.*
 !backend/.env.example
 !frontend/.env.example
+!services/**/.env.example
 
 # Node
 node_modules/

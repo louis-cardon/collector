@@ -1,0 +1,74 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: collector-dev
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+configMapGenerator:
+  - name: frontend-config
+    literals:
+      - NEXT_PUBLIC_API_BASE_URL=/api
+  - name: api-gateway-config
+    literals:
+      - PORT=3001
+      - LOG_LEVEL=debug
+      - CORS_ALLOWED_ORIGINS=http://collector.dev.local
+      - AUTH_SERVICE_URL=http://auth-service:3002
+      - CATALOG_SERVICE_URL=http://catalog-service:3003
+      - ARTICLE_SERVICE_URL=http://article-service:3004
+      - AUDIT_SERVICE_URL=http://audit-service:3005
+  - name: auth-service-config
+    literals:
+      - PORT=3002
+      - LOG_LEVEL=debug
+      - JWT_EXPIRES_IN=1h
+      - AUDIT_SERVICE_URL=http://audit-service:3005
+  - name: catalog-service-config
+    literals:
+      - PORT=3003
+      - LOG_LEVEL=debug
+      - AUDIT_SERVICE_URL=http://audit-service:3005
+  - name: article-service-config
+    literals:
+      - PORT=3004
+      - LOG_LEVEL=debug
+      - AUDIT_SERVICE_URL=http://audit-service:3005
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3006
+  - name: audit-service-config
+    literals:
+      - PORT=3005
+      - LOG_LEVEL=debug
+  - name: notification-service-config
+    literals:
+      - PORT=3006
+      - LOG_LEVEL=debug
+      - AUTH_SERVICE_URL=http://auth-service:3002
+      - NOTIFICATIONS_PROVIDER=logger
+      - NOTIFICATIONS_FROM_EMAIL=no-reply@collector.dev.local
+      - NOTIFICATIONS_TEST_RECIPIENT=
+
+secretGenerator:
+  - name: postgres-secrets
+    literals:
+      - POSTGRES_DB=collector
+      - POSTGRES_USER=collector
+      - POSTGRES_PASSWORD=collector
+  - name: shared-secrets
+    literals:
+      - DATABASE_URL=postgresql://collector:collector@postgres:5432/collector?schema=public
+      - JWT_SECRET=dev-change-me
+      - INTERNAL_SERVICE_TOKEN=internal-change-me
+      - RESEND_API_KEY=disabled
+      - PGDATABASE=collector
+      - PGUSER=collector
+      - PGPASSWORD=collector
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+patches:
+  - path: patch-image-pull.yaml
+  - path: patch-ingress.yaml

@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          env:
+            - name: PGHOST
+              value: postgres
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: shared-secrets
+                  key: PGDATABASE
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: shared-secrets
+                  key: PGUSER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: shared-secrets
+                  key: PGPASSWORD
+          command:
+            - sh
+            - -c
+            - until pg_isready -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE"; do sleep 2; done
+      containers:
+        - name: auth-service
+          image: collector/auth-service:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - npx prisma migrate deploy --schema /app/backend/prisma/schema.prisma && node dist/main
+          ports:
+            - containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: auth-service-config
+            - secretRef:
+                name: shared-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 15
+            periodSeconds: 10
