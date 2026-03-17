@@ -60,10 +60,12 @@ def replace_tag(text: str, marker: str, tag: str, latest_tag: str) -> str:
         raise ValueError(f"unexpected tag line after marker {marker}: {current_line}")
 
     current_tag = current_line[len(expected_prefix) :]
-    if current_tag != latest_tag and current_tag != tag:
-        # Preserve manual deviations by requiring the file to stay in the expected format.
+    branch_prefix = latest_tag[: -len("latest")]
+    if current_tag != latest_tag and not current_tag.startswith(branch_prefix):
+        # Preserve manual deviations by requiring the file to stay on the same branch namespace.
         raise ValueError(
-            f"unexpected current tag for {marker}: {current_tag} (expected {latest_tag} or {tag})"
+            f"unexpected current tag for {marker}: {current_tag} "
+            f"(expected {latest_tag} or any tag starting with {branch_prefix})"
         )
 
     return f"{text[:tag_start]}{expected_prefix}{tag}{text[tag_end:]}"
