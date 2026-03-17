@@ -2,16 +2,25 @@ name: ci
 
 on:
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   push:
     branches:
+      - develop
+      - preprod
       - main
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
-  contents: read
+  contents: write
+  packages: write
   pull-requests: read
 
 concurrency:
@@ -19,28 +28,86 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
-    name: quality-and-tests
+  lint-build:
+    name: lint-and-build
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: collector
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d collector"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate CI Docker Compose environment
+        run: |
+          printf '%s\n' \
+            'APP_PORT=8080' \
+            'POSTGRES_DB=collector' \
+            'POSTGRES_USER=collector' \
+            'POSTGRES_PASSWORD=collector' \
+            'DATABASE_URL=postgresql://collector:collector@postgres:5432/collector?schema=public' \
+            'LOG_LEVEL=info' \
+            'JWT_SECRET=ci-jwt-secret' \
+            'JWT_EXPIRES_IN=1h' \
+            'INTERNAL_SERVICE_TOKEN=internal-change-me' \
+            'CORS_ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080' \
+            'NOTIFICATIONS_PROVIDER=logger' \
+            'NOTIFICATIONS_FROM_EMAIL=no-reply@collector.local' \
+            'GRAFANA_ADMIN_USER=admin' \
+            'GRAFANA_ADMIN_PASSWORD=change-me' \
+            > .env.compose
+
+      - name: Validate Docker Compose configuration
+        run: |
+          docker compose config >/dev/null
+
+      - name: Lint all workspaces
+        run: npm run lint
+
+      - name: Build all workspaces
+        run: npm run build
+
+  frontend-tests:
+    name: frontend-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Frontend tests with coverage
+        run: npm run test:coverage -w frontend -- --runInBand
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          if-no-files-found: ignore
+
+  backend-tests:
+    name: backend-tests
+    runs-on: ubuntu-latest
 
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/collector?schema=public
       JWT_SECRET: ci-jwt-secret
 
     steps:
@@ -56,44 +123,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint frontend
-        run: npm run lint -w frontend
-
-      - name: Lint backend
-        run: npm run lint -w backend
-
-      - name: Build frontend
-        run: npm run build -w frontend
-
-      - name: Build backend
-        run: npm run build -w backend
-
-      - name: Frontend tests
-        run: npm run test -w frontend -- --runInBand
-
-      - name: Backend tests
-        run: npm run test -w backend -- --runInBand
+      - name: Backend unit tests with coverage
+        run: npm run test:coverage -w backend -- --runInBand
 
       - name: Backend e2e tests
         run: npm run test:e2e -w backend
-
-      - name: Coverage
-        run: npm run test:coverage
 
       - name: Upload coverage artifacts
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: coverage-reports
-          path: |
-            backend/coverage
-            frontend/coverage
+          name: backend-coverage
+          path: backend/coverage
           if-no-files-found: ignore
 
   security:
     name: dependency-vulnerability-scan
     runs-on: ubuntu-latest
-    needs: quality
 
     steps:
       - name: Checkout
@@ -114,7 +160,9 @@ jobs:
   sonar:
     name: sonarqube-cloud
     runs-on: ubuntu-latest
-    needs: quality
+    needs:
+      - frontend-tests
+      - backend-tests
     if: ${{ vars.ENABLE_SONAR == 'true' }}
 
     steps:
@@ -123,11 +171,23 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download coverage artifacts
+      - name: Download frontend coverage artifacts
         uses: actions/download-artifact@v7
         with:
-          name: coverage-reports
-          path: .
+          name: frontend-coverage
+          path: .artifacts/frontend
+
+      - name: Download backend coverage artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: backend-coverage
+          path: .artifacts/backend
+
+      - name: Restore coverage report paths
+        run: |
+          mkdir -p frontend/coverage backend/coverage
+          cp "$(find .artifacts/frontend -name lcov.info | head -n 1)" frontend/coverage/lcov.info
+          cp "$(find .artifacts/backend -name lcov.info | head -n 1)" backend/coverage/lcov.info
 
       - name: Verify coverage reports
         run: |
@@ -140,27 +200,257 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  playwright-smoke:
-    name: playwright-smoke
-    if: github.event_name == 'workflow_dispatch'
+  compute-release-vars:
+    name: compute-release-vars
+    if: >-
+      github.event_name == 'push' &&
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      (github.ref_name == 'develop' || github.ref_name == 'preprod' || github.ref_name == 'main')
     runs-on: ubuntu-latest
-    needs: quality
+    needs:
+      - lint-build
+      - frontend-tests
+      - backend-tests
+      - security
+    outputs:
+      branch_name: ${{ steps.vars.outputs.branch_name }}
+      overlay_name: ${{ steps.vars.outputs.overlay_name }}
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+      latest_tag: ${{ steps.vars.outputs.latest_tag }}
+      owner_lower: ${{ steps.vars.outputs.owner_lower }}
+      platforms: ${{ steps.vars.outputs.platforms }}
+      has_images: ${{ steps.vars.outputs.has_images }}
+      matrix: ${{ steps.vars.outputs.matrix }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Compute deployment variables
+        id: vars
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          owner_lower=$(echo "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          branch_name="$GITHUB_REF_NAME"
+          short_sha=$(echo "$GITHUB_SHA" | cut -c1-12)
+
+          case "$branch_name" in
+            develop) overlay_name="dev" ;;
+            preprod) overlay_name="preprod" ;;
+            main) overlay_name="prod" ;;
+            *)
+              echo "Unsupported branch: $branch_name" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ "$branch_name" = "main" ]; then
+            platforms="linux/amd64,linux/arm64"
+          else
+            platforms="linux/amd64"
+          fi
+
+          before_sha="${GITHUB_EVENT_BEFORE:-}"
+          if [ -z "$before_sha" ] || [ "$before_sha" = "0000000000000000000000000000000000000000" ]; then
+            git ls-files > changed-files.txt
+          else
+            git diff --name-only "$before_sha" "$GITHUB_SHA" > changed-files.txt
+          fi
+
+          python3 - <<'PY' > image-build-outputs.txt
+          import json
+          from pathlib import Path
+
+          changed_files = [
+              line.strip()
+              for line in Path("changed-files.txt").read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+
+          shared_files = {
+              "package.json",
+              "package-lock.json",
+              "backend/package.json",
+              "frontend/package.json",
+              "services/api-gateway/package.json",
+              "services/auth-service/package.json",
+              "services/catalog-service/package.json",
+              "services/article-service/package.json",
+              "services/audit-service/package.json",
+              "services/notification-service/package.json",
+          }
+          shared_prefixes = ("backend/prisma/",)
+
+          images = [
+              {
+                  "image_name": "collector-api-gateway",
+                  "dockerfile": "services/api-gateway/Dockerfile",
+                  "paths": ["services/api-gateway/"],
+              },
+              {
+                  "image_name": "collector-auth-service",
+                  "dockerfile": "services/auth-service/Dockerfile",
+                  "paths": ["services/auth-service/"],
+              },
+              {
+                  "image_name": "collector-catalog-service",
+                  "dockerfile": "services/catalog-service/Dockerfile",
+                  "paths": ["services/catalog-service/"],
+              },
+              {
+                  "image_name": "collector-article-service",
+                  "dockerfile": "services/article-service/Dockerfile",
+                  "paths": ["services/article-service/"],
+              },
+              {
+                  "image_name": "collector-audit-service",
+                  "dockerfile": "services/audit-service/Dockerfile",
+                  "paths": ["services/audit-service/"],
+              },
+              {
+                  "image_name": "collector-notification-service",
+                  "dockerfile": "services/notification-service/Dockerfile",
+                  "paths": ["services/notification-service/"],
+              },
+              {
+                  "image_name": "collector-frontend",
+                  "dockerfile": "frontend/Dockerfile",
+                  "paths": ["frontend/"],
+              },
+          ]
+
+          build_all = not changed_files or any(
+              path in shared_files or path.startswith(shared_prefixes)
+              for path in changed_files
+          )
+
+          if build_all:
+              include = [
+                  {
+                      "image_name": image["image_name"],
+                      "dockerfile": image["dockerfile"],
+                  }
+                  for image in images
+              ]
+          else:
+              include = [
+                  {
+                      "image_name": image["image_name"],
+                      "dockerfile": image["dockerfile"],
+                  }
+                  for image in images
+                  if any(
+                      changed_path.startswith(tuple(image["paths"]))
+                      for changed_path in changed_files
+                  )
+              ]
+
+          print(f"has_images={'true' if include else 'false'}")
+          print(
+              "matrix="
+              + json.dumps({"include": include}, separators=(",", ":"))
+          )
+          PY
+
+          image_tag="${branch_name}-${short_sha}"
+          latest_tag="${branch_name}-latest"
+
+          echo "owner_lower=$owner_lower" >> "$GITHUB_OUTPUT"
+          echo "branch_name=$branch_name" >> "$GITHUB_OUTPUT"
+          echo "overlay_name=$overlay_name" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
+          echo "platforms=$platforms" >> "$GITHUB_OUTPUT"
+          cat image-build-outputs.txt >> "$GITHUB_OUTPUT"
+
+  build-and-publish-images:
+    name: build-and-publish-images
+    if: >-
+      github.event_name == 'push' &&
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      (github.ref_name == 'develop' || github.ref_name == 'preprod' || github.ref_name == 'main') &&
+      needs.compute-release-vars.outputs.has_images == 'true'
+    runs-on: ubuntu-latest
+    needs: compute-release-vars
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.compute-release-vars.outputs.matrix) }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
+      - name: Set up QEMU
+        if: contains(needs.compute-release-vars.outputs.platforms, 'arm64')
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          node-version: 22
-          cache: npm
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Build and push ${{ matrix.image_name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ needs.compute-release-vars.outputs.platforms }}
+          push: true
+          tags: |
+            ghcr.io/${{ needs.compute-release-vars.outputs.owner_lower }}/${{ matrix.image_name }}:${{ needs.compute-release-vars.outputs.image_tag }}
+            ghcr.io/${{ needs.compute-release-vars.outputs.owner_lower }}/${{ matrix.image_name }}:${{ needs.compute-release-vars.outputs.latest_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Install Playwright browsers
-        run: npm exec -w frontend playwright install --with-deps
+  update-gitops-manifests:
+    name: update-gitops-manifests
+    if: >-
+      github.event_name == 'push' &&
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      (github.ref_name == 'develop' || github.ref_name == 'preprod' || github.ref_name == 'main') &&
+      needs.compute-release-vars.outputs.has_images == 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - compute-release-vars
+      - build-and-publish-images
 
-      - name: Run Playwright tests
-        run: npm run test:e2e:playwright -w frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Update overlay image tags
+        run: |
+          python3 scripts/ci/update_kustomize_images.py \
+            "infra/k8s/overlays/${{ needs.compute-release-vars.outputs.overlay_name }}/kustomization.yaml" \
+            "${{ needs.compute-release-vars.outputs.owner_lower }}" \
+            "${{ needs.compute-release-vars.outputs.image_tag }}" \
+            "${{ needs.compute-release-vars.outputs.latest_tag }}"
+
+      - name: Commit and push manifest update
+        run: |
+          if git diff --quiet -- infra/k8s/overlays/${{ needs.compute-release-vars.outputs.overlay_name }}/kustomization.yaml; then
+            echo "No manifest changes to commit."
+            exit 0
+          fi
+
+          git add infra/k8s/overlays/${{ needs.compute-release-vars.outputs.overlay_name }}/kustomization.yaml
+          git commit -m "chore(ci): update ${{ needs.compute-release-vars.outputs.overlay_name }} image tags [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}

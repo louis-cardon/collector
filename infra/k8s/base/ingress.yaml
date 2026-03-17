@@ -10,13 +10,6 @@ spec:
     - host: collector.local
       http:
         paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: api-gateway
-                port:
-                  number: 3001
           - path: /docs
             pathType: Prefix
             backend:

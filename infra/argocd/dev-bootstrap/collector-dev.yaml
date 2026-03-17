@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: collector-dev
+  namespace: argocd
+spec:
+  project: collector
+  source:
+    repoURL: https://github.com/louis-cardon/collector.git
+    targetRevision: develop
+    path: infra/k8s/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: collector-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

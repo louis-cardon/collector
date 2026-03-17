@@ -15,7 +15,7 @@ configMapGenerator:
     literals:
       - PORT=3001
       - LOG_LEVEL=debug
-      - CORS_ALLOWED_ORIGINS=http://collector.dev.local
+      - CORS_ALLOWED_ORIGINS=http://collector.dev.local,http://collector.dev.local:8081,http://localhost:3000,http://127.0.0.1:3000
       - AUTH_SERVICE_URL=http://auth-service:3002
       - CATALOG_SERVICE_URL=http://catalog-service:3003
       - ARTICLE_SERVICE_URL=http://article-service:3004
@@ -68,6 +68,29 @@ secretGenerator:
 
 generatorOptions:
   disableNameSuffixHash: true
+
+images:
+  - name: collector/api-gateway:latest
+    newName: ghcr.io/louis-cardon/collector-api-gateway
+    newTag: develop-102a30e182fa
+  - name: collector/auth-service:latest
+    newName: ghcr.io/louis-cardon/collector-auth-service
+    newTag: develop-102a30e182fa
+  - name: collector/catalog-service:latest
+    newName: ghcr.io/louis-cardon/collector-catalog-service
+    newTag: develop-102a30e182fa
+  - name: collector/article-service:latest
+    newName: ghcr.io/louis-cardon/collector-article-service
+    newTag: develop-102a30e182fa
+  - name: collector/audit-service:latest
+    newName: ghcr.io/louis-cardon/collector-audit-service
+    newTag: develop-102a30e182fa
+  - name: collector/notification-service:latest
+    newName: ghcr.io/louis-cardon/collector-notification-service
+    newTag: develop-102a30e182fa
+  - name: collector/frontend:latest
+    newName: ghcr.io/louis-cardon/collector-frontend
+    newTag: develop-102a30e182fa
 
 patches:
   - path: patch-image-pull.yaml

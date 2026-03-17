@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: collector-preprod
+  namespace: argocd
+spec:
+  project: collector
+  source:
+    repoURL: https://github.com/louis-cardon/collector.git
+    targetRevision: preprod
+    path: infra/k8s/overlays/preprod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: collector-preprod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

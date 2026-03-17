@@ -10,6 +10,14 @@
   "scripts": {
     "dev": "concurrently \"npm run dev -w frontend\" \"npm run dev -w services/api-gateway\" \"npm run dev -w services/auth-service\" \"npm run dev -w services/catalog-service\" \"npm run dev -w services/article-service\" \"npm run dev -w services/audit-service\" \"npm run dev -w services/notification-service\"",
     "dev:microservices": "concurrently \"npm run dev -w services/api-gateway\" \"npm run dev -w services/auth-service\" \"npm run dev -w services/catalog-service\" \"npm run dev -w services/article-service\" \"npm run dev -w services/audit-service\" \"npm run dev -w services/notification-service\"",
+    "compose:up": "docker compose up -d --build",
+    "compose:down": "docker compose down --remove-orphans",
+    "compose:logs": "docker compose logs -f reverse-proxy frontend api-gateway auth-service catalog-service article-service audit-service notification-service",
+    "compose:ps": "docker compose ps",
+    "compose:seed": "docker compose --profile ops run --rm db-seed",
+    "compose:observability:up": "docker compose --profile observability up -d",
+    "compose:security:trivy": "docker compose --profile security run --rm trivy-fs",
+    "compose:security:gitleaks": "docker compose --profile security run --rm gitleaks",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
@@ -27,7 +35,16 @@
     "loadtest:login": "npm run loadtest -- --target login",
     "loadtest:summary": "node scripts/load-tests/summarize-autocannon.mjs --input load-test-results",
     "docker:build:frontend": "docker build -f frontend/Dockerfile -t collector/frontend:latest .",
-    "docker:build:microservices": "npm run docker:build:api-gateway && npm run docker:build:auth-service && npm run docker:build:catalog-service && npm run docker:build:article-service && npm run docker:build:audit-service && npm run docker:build:notification-service && npm run docker:build:frontend"
+    "docker:build:microservices": "npm run docker:build:api-gateway && npm run docker:build:auth-service && npm run docker:build:catalog-service && npm run docker:build:article-service && npm run docker:build:audit-service && npm run docker:build:notification-service && npm run docker:build:frontend",
+    "minikube:build-images": "bash scripts/minikube/build-images.sh",
+    "k8s:apply:dev": "kubectl apply -k infra/k8s/overlays/dev",
+    "k8s:apply:preprod": "kubectl apply -k infra/k8s/overlays/preprod",
+    "k8s:apply:prod": "kubectl apply -k infra/k8s/overlays/prod",
+    "argocd:install": "bash scripts/argocd/install.sh",
+    "argocd:bootstrap:dev": "bash scripts/argocd/bootstrap-dev.sh",
+    "argocd:bootstrap:all-envs": "bash scripts/argocd/bootstrap-all-envs.sh",
+    "argocd:ui": "bash scripts/argocd/open-ui.sh",
+    "argocd:password": "bash scripts/argocd/get-admin-password.sh"
   },
   "devDependencies": {
     "autocannon": "^8.0.0",

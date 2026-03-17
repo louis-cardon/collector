@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { ServiceProxyService } from './service-proxy.service';
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { ServiceProxyService } from "./service-proxy.service";
 
 @Module({
   imports: [ConfigModule],

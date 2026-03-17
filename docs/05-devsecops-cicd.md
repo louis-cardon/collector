@@ -737,3 +737,21 @@ Le pipeline CI/CD proposé permet :
 - de bloquer les régressions importantes ;
 - de livrer une version démontrable du prototype ;
 - de fournir une base exploitable pour le plan de remédiation de la v1.
+## GitOps avec GHCR et Argo CD
+
+Le deploiement Kubernetes est maintenant aligne sur un flux GitOps simple :
+- GitHub Actions construit les images Docker de `frontend` et `services/*`
+- les images sont publiees sur `ghcr.io`
+- le workflow met a jour l'overlay Kustomize correspondant a la branche (`dev`, `preprod`, `prod`)
+- Argo CD detecte ce commit et synchronise le cluster
+
+Correspondance de branches :
+- `develop` -> `infra/k8s/overlays/dev`
+- `preprod` -> `infra/k8s/overlays/preprod`
+- `main` -> `infra/k8s/overlays/prod`
+
+Le workflow concerne :
+- [ghcr-argocd.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ghcr-argocd.yml)
+
+Hypothese retenue :
+- packages GHCR publics pour eviter l'ajout d'un `imagePullSecret` dans le cluster

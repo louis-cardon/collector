@@ -1,10 +1,11 @@
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { AuditAction } from "@prisma/client";
+import { Type } from "class-transformer";
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class ListAuditLogsQueryDto {
   @IsOptional()
-  @IsString()
-  action?: string;
+  @IsEnum(AuditAction)
+  action?: AuditAction;
 
   @IsOptional()
   @IsString()

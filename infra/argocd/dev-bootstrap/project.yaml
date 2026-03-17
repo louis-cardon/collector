@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: collector
+  namespace: argocd
+spec:
+  description: Collector.shop GitOps project for local Kubernetes environments
+  sourceRepos:
+    - https://github.com/louis-cardon/collector.git
+  destinations:
+    - namespace: collector-dev
+      server: https://kubernetes.default.svc
+    - namespace: collector-preprod
+      server: https://kubernetes.default.svc
+    - namespace: collector-prod
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

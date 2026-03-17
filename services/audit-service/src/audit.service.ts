@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from './prisma/prisma.service';
-import { CreateAuditLogDto } from './dto/create-audit-log.dto';
-import { ListAuditLogsQueryDto } from './dto/list-audit-logs-query.dto';
+import { Injectable } from "@nestjs/common";
+import { Prisma, Role } from "@prisma/client";
+import { CreateAuditLogDto } from "./dto/create-audit-log.dto";
+import { ListAuditLogsQueryDto } from "./dto/list-audit-logs-query.dto";
+import { PrismaService } from "./prisma/prisma.service";
 
 @Injectable()
 export class AuditService {
@@ -11,9 +11,9 @@ export class AuditService {
   create(data: CreateAuditLogDto) {
     return this.prisma.auditLog.create({
       data: {
-        action: data.action as any,
+        action: data.action,
         actorId: data.actorId,
-        actorRole: data.actorRole as any,
+        actorRole: this.mapActorRole(data.actorRole),
         resourceType: data.resourceType,
         resourceId: data.resourceId,
         metadata: data.metadata as Prisma.InputJsonValue | undefined,
@@ -23,7 +23,7 @@ export class AuditService {
 
   async findMany(query: ListAuditLogsQueryDto) {
     const where: Prisma.AuditLogWhereInput = {
-      action: query.action as any,
+      action: query.action,
       actorId: query.actorId,
       resourceType: query.resourceType,
       resourceId: query.resourceId,
@@ -34,7 +34,7 @@ export class AuditService {
       this.prisma.auditLog.findMany({
         where,
         orderBy: {
-          timestamp: 'desc',
+          timestamp: "desc",
         },
         skip,
         take: query.limit,
@@ -58,5 +58,13 @@ export class AuditService {
         totalPages: total === 0 ? 0 : Math.ceil(total / query.limit),
       },
     };
+  }
+
+  private mapActorRole(role?: string): Role | undefined {
+    if (role === "admin" || role === "seller") {
+      return role;
+    }
+
+    return undefined;
   }
 }
