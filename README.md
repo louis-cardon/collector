@@ -277,6 +277,7 @@ Verification :
 - apres un push, verifier l'onglet `Actions`
 - verifier les packages dans l'onglet `Packages`
 - verifier ensuite les applications Argo CD dans `argocd`
+- pour Minikube sur Apple Silicon, les images GHCR doivent etre multi-architecture (`linux/amd64` + `linux/arm64`)
 
 ## Deploiement Vercel + Render + Neon
 
