@@ -118,6 +118,62 @@ npm run dev
 
 Les variables d'environnement de chaque service sont documentees dans `services/*/.env.example`.
 
+## Stack Docker Compose
+
+Le fichier [compose.yaml](/Users/louiscardon/Documents/Projet/collector/compose.yaml) fournit maintenant une stack d'execution complete et defendable pour une soutenance :
+- reverse proxy `nginx` en point d'entree unique ;
+- `frontend` + `api-gateway` + services metier + `postgres` ;
+- migration Prisma automatique au demarrage ;
+- reseau interne dedie aux microservices ;
+- healthchecks et dependances explicites ;
+- profil `observability` avec `Prometheus`, `Grafana`, `cAdvisor`, `blackbox-exporter`, `postgres-exporter`, `Dozzle` ;
+- profil `security` avec scans `Trivy` et `Gitleaks`.
+
+Preparation :
+
+```bash
+cp .env.compose.example .env.compose
+mkdir -p reports/security
+```
+
+Lancement de la stack applicative :
+
+```bash
+npm run compose:up
+```
+
+Seed de la base :
+
+```bash
+npm run compose:seed
+```
+
+Observabilite :
+
+```bash
+npm run compose:observability:up
+```
+
+Scans securite :
+
+```bash
+npm run compose:security:trivy
+npm run compose:security:gitleaks
+```
+
+Acces utiles :
+- application : `http://localhost:8080`
+- Swagger gateway : `http://localhost:8080/docs`
+- Prometheus : `http://localhost:9090`
+- Grafana : `http://localhost:3007`
+- Dozzle : `http://localhost:8088`
+
+Arret :
+
+```bash
+npm run compose:down
+```
+
 ## Variables d’environnement
 
 - backend : fichier local attendu `backend/.env` pour Prisma / migration transitoire
@@ -140,20 +196,7 @@ Conséquence :
 
 ## PostgreSQL local (Docker Compose)
 
-Le monorepo fournit un `compose.yaml` à la racine avec un service PostgreSQL 16.
-
-```bash
-docker compose up -d
-docker compose down
-```
-
-Utilisation avec Prisma (backend) :
-
-```bash
-npm run prisma:generate -w backend
-npm run prisma:migrate:deploy -w backend
-npm run prisma:seed -w backend
-```
+`PostgreSQL` est maintenant integre a la stack `compose.yaml` avec migration automatique via le service `auth-migrate`. Le seed reste volontairement manuel pour garder un cycle d'execution controle.
 
 ## Scripts racine
 
