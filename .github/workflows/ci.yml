@@ -62,28 +62,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate CI Docker Compose environment
+        run: |
+          printf '%s\n' \
+            'APP_PORT=8080' \
+            'POSTGRES_DB=collector' \
+            'POSTGRES_USER=collector' \
+            'POSTGRES_PASSWORD=collector' \
+            'DATABASE_URL=postgresql://collector:collector@postgres:5432/collector?schema=public' \
+            'LOG_LEVEL=info' \
+            'JWT_SECRET=ci-jwt-secret' \
+            'JWT_EXPIRES_IN=1h' \
+            'INTERNAL_SERVICE_TOKEN=internal-change-me' \
+            'CORS_ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080' \
+            'NOTIFICATIONS_PROVIDER=logger' \
+            'NOTIFICATIONS_FROM_EMAIL=no-reply@collector.local' \
+            'GRAFANA_ADMIN_USER=admin' \
+            'GRAFANA_ADMIN_PASSWORD=change-me' \
+            > .env.compose
+
       - name: Validate Docker Compose configuration
         run: |
-          if [ -f .env.compose.example ]; then
-            cp .env.compose.example .env.compose
-          else
-            cat > .env.compose <<'EOF'
-APP_PORT=8080
-POSTGRES_DB=collector
-POSTGRES_USER=collector
-POSTGRES_PASSWORD=collector
-DATABASE_URL=postgresql://collector:collector@postgres:5432/collector?schema=public
-LOG_LEVEL=info
-JWT_SECRET=ci-jwt-secret
-JWT_EXPIRES_IN=1h
-INTERNAL_SERVICE_TOKEN=internal-change-me
-CORS_ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
-NOTIFICATIONS_PROVIDER=logger
-NOTIFICATIONS_FROM_EMAIL=no-reply@collector.local
-GRAFANA_ADMIN_USER=admin
-GRAFANA_ADMIN_PASSWORD=change-me
-EOF
-          fi
           docker compose config >/dev/null
 
       - name: Prepare database
