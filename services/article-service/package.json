@@ -1,6 +1,7 @@
 {
   "name": "article-service",
   "version": "0.1.0",
+  "description": "Collector.shop article workflow service",
   "private": true,
   "scripts": {
     "build": "nest build",

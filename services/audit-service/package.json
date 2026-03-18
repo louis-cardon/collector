@@ -1,6 +1,7 @@
 {
   "name": "audit-service",
   "version": "0.1.0",
+  "description": "Collector.shop audit logging service",
   "private": true,
   "scripts": {
     "build": "nest build",

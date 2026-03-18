@@ -1,6 +1,7 @@
 {
   "name": "frontend",
   "version": "0.1.0",
+  "description": "Collector.shop frontend",
   "private": true,
   "scripts": {
     "dev": "NEXT_IGNORE_INCORRECT_LOCKFILE=1 next dev --webpack",

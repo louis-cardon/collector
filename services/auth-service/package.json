@@ -1,6 +1,7 @@
 {
   "name": "auth-service",
   "version": "0.1.0",
+  "description": "Collector.shop authentication service",
   "private": true,
   "scripts": {
     "build": "nest build",

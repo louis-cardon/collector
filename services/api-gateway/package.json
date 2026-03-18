@@ -1,6 +1,7 @@
 {
   "name": "api-gateway",
   "version": "0.1.0",
+  "description": "Collector.shop API gateway",
   "private": true,
   "scripts": {
     "build": "nest build",
