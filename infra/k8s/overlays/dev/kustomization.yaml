@@ -56,25 +56,25 @@ generatorOptions:
 images:
   - name: collector/api-gateway:latest
     newName: ghcr.io/louis-cardon/collector-api-gateway
-    newTag: develop-102a30e182fa
+    newTag: main-def8e745ec64
   - name: collector/auth-service:latest
     newName: ghcr.io/louis-cardon/collector-auth-service
-    newTag: develop-102a30e182fa
+    newTag: main-def8e745ec64
   - name: collector/catalog-service:latest
     newName: ghcr.io/louis-cardon/collector-catalog-service
-    newTag: develop-102a30e182fa
+    newTag: main-def8e745ec64
   - name: collector/article-service:latest
     newName: ghcr.io/louis-cardon/collector-article-service
-    newTag: develop-102a30e182fa
+    newTag: main-def8e745ec64
   - name: collector/audit-service:latest
     newName: ghcr.io/louis-cardon/collector-audit-service
-    newTag: develop-102a30e182fa
+    newTag: main-def8e745ec64
   - name: collector/notification-service:latest
     newName: ghcr.io/louis-cardon/collector-notification-service
-    newTag: develop-102a30e182fa
+    newTag: main-def8e745ec64
   - name: collector/frontend:latest
     newName: ghcr.io/louis-cardon/collector-frontend
-    newTag: develop-102a30e182fa
+    newTag: main-def8e745ec64
 
 patches:
   - path: patch-image-pull.yaml
