@@ -5,6 +5,13 @@ metadata:
   namespace: argocd
 spec:
   project: collector
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: shared-secrets
+      namespace: collector-dev-local
+      jsonPointers:
+        - /data/RESEND_API_KEY
   source:
     repoURL: https://github.com/louis-cardon/collector.git
     targetRevision: develop
