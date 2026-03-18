@@ -8,6 +8,8 @@ spec:
   sourceRepos:
     - https://github.com/louis-cardon/collector.git
   destinations:
+    - namespace: collector-dev-local
+      server: https://kubernetes.default.svc
     - namespace: collector-dev
       server: https://kubernetes.default.svc
     - namespace: collector-preprod

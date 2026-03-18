@@ -751,7 +751,8 @@ Correspondance de branches :
 - `main` -> `infra/k8s/overlays/prod`
 
 Le workflow concerne :
-- [ghcr-argocd.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ghcr-argocd.yml)
+- [ci.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ci.yml)
 
 Hypothese retenue :
 - packages GHCR publics pour eviter l'ajout d'un `imagePullSecret` dans le cluster
+- secrets Kubernetes `dev`, `preprod` et `prod` crees hors depot ; seul l'overlay `dev-local` garde des valeurs de demonstration pour Minikube

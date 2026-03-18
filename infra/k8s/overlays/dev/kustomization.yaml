@@ -50,22 +50,6 @@ configMapGenerator:
       - NOTIFICATIONS_FROM_EMAIL=no-reply@collector.dev.local
       - NOTIFICATIONS_TEST_RECIPIENT=
 
-secretGenerator:
-  - name: postgres-secrets
-    literals:
-      - POSTGRES_DB=collector
-      - POSTGRES_USER=collector
-      - POSTGRES_PASSWORD=collector
-  - name: shared-secrets
-    literals:
-      - DATABASE_URL=postgresql://collector:collector@postgres:5432/collector?schema=public
-      - JWT_SECRET=dev-change-me
-      - INTERNAL_SERVICE_TOKEN=internal-change-me
-      - RESEND_API_KEY=disabled
-      - PGDATABASE=collector
-      - PGUSER=collector
-      - PGPASSWORD=collector
-
 generatorOptions:
   disableNameSuffixHash: true
 
