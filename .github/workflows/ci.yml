@@ -214,13 +214,14 @@ jobs:
       - security
     outputs:
       branch_name: ${{ steps.vars.outputs.branch_name }}
-      overlay_name: ${{ steps.vars.outputs.overlay_name }}
+      gitops_branch: ${{ steps.vars.outputs.gitops_branch }}
       image_tag: ${{ steps.vars.outputs.image_tag }}
       latest_tag: ${{ steps.vars.outputs.latest_tag }}
       owner_lower: ${{ steps.vars.outputs.owner_lower }}
       platforms: ${{ steps.vars.outputs.platforms }}
       has_images: ${{ steps.vars.outputs.has_images }}
       matrix: ${{ steps.vars.outputs.matrix }}
+      overlays_json: ${{ steps.vars.outputs.overlays_json }}
 
     steps:
       - name: Checkout
@@ -239,11 +240,12 @@ jobs:
           owner_lower=$(echo "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
           branch_name="$GITHUB_REF_NAME"
           short_sha=$(echo "$GITHUB_SHA" | cut -c1-12)
+          gitops_branch="main"
 
           case "$branch_name" in
-            develop) overlay_name="dev" ;;
-            preprod) overlay_name="preprod" ;;
-            main) overlay_name="prod" ;;
+            develop) overlays_json='["dev"]' ;;
+            preprod) overlays_json='["preprod","dev"]' ;;
+            main) overlays_json='["prod","preprod","dev"]' ;;
             *)
               echo "Unsupported branch: $branch_name" >&2
               exit 1
@@ -363,10 +365,11 @@ jobs:
 
           echo "owner_lower=$owner_lower" >> "$GITHUB_OUTPUT"
           echo "branch_name=$branch_name" >> "$GITHUB_OUTPUT"
-          echo "overlay_name=$overlay_name" >> "$GITHUB_OUTPUT"
+          echo "gitops_branch=$gitops_branch" >> "$GITHUB_OUTPUT"
           echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
           echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
           echo "platforms=$platforms" >> "$GITHUB_OUTPUT"
+          echo "overlays_json=$overlays_json" >> "$GITHUB_OUTPUT"
           cat image-build-outputs.txt >> "$GITHUB_OUTPUT"
 
   build-and-publish-images:
@@ -429,7 +432,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ needs.compute-release-vars.outputs.gitops_branch }}
+          fetch-depth: 0
 
       - name: Configure Git identity
         run: |
@@ -438,19 +442,26 @@ jobs:
 
       - name: Update overlay image tags
         run: |
+          python3 - <<'PY' > overlay-files.txt
+          import json
+
+          overlays = json.loads(r'''${{ needs.compute-release-vars.outputs.overlays_json }}''')
+          for overlay in overlays:
+              print(f"infra/k8s/overlays/{overlay}/kustomization.yaml")
+          PY
+
           python3 scripts/ci/update_kustomize_images.py \
-            "infra/k8s/overlays/${{ needs.compute-release-vars.outputs.overlay_name }}/kustomization.yaml" \
             "${{ needs.compute-release-vars.outputs.owner_lower }}" \
             "${{ needs.compute-release-vars.outputs.image_tag }}" \
-            "${{ needs.compute-release-vars.outputs.latest_tag }}"
+            $(tr '\n' ' ' < overlay-files.txt)
 
       - name: Commit and push manifest update
         run: |
-          if git diff --quiet -- infra/k8s/overlays/${{ needs.compute-release-vars.outputs.overlay_name }}/kustomization.yaml; then
+          if git diff --quiet -- $(tr '\n' ' ' < overlay-files.txt); then
             echo "No manifest changes to commit."
             exit 0
           fi
 
-          git add infra/k8s/overlays/${{ needs.compute-release-vars.outputs.overlay_name }}/kustomization.yaml
-          git commit -m "chore(ci): update ${{ needs.compute-release-vars.outputs.overlay_name }} image tags [skip ci]"
-          git push origin HEAD:${{ github.ref_name }}
+          xargs git add < overlay-files.txt
+          git commit -m "chore(ci): promote ${{ github.ref_name }} images [skip ci]"
+          git push origin HEAD:${{ needs.compute-release-vars.outputs.gitops_branch }}

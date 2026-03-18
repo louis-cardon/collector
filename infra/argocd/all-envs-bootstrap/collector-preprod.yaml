@@ -7,7 +7,7 @@ spec:
   project: collector
   source:
     repoURL: https://github.com/louis-cardon/collector.git
-    targetRevision: preprod
+    targetRevision: main
     path: infra/k8s/overlays/preprod
   destination:
     server: https://kubernetes.default.svc

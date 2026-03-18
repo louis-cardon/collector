@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$dockerEnv = minikube -p minikube docker-env --shell powershell
+$dockerEnv = (minikube -p minikube docker-env --shell powershell | Out-String).Trim()
 if ([string]::IsNullOrWhiteSpace($dockerEnv)) {
   throw "Unable to resolve the Minikube Docker environment."
 }

@@ -289,26 +289,26 @@ Points d'attention :
 - `collector-dev-local` est le meilleur point de depart sur Minikube ; `preprod` et `prod` consomment davantage de ressources
 - les applications Argo CD pointent sur le repo GitHub `https://github.com/louis-cardon/collector.git`
 - `collector-dev-local` suit aussi `develop`, mais deploie l'overlay local `infra/k8s/overlays/dev-local` avec images Minikube
-- `collector-dev` suit la branche `develop` avec l'overlay GHCR `infra/k8s/overlays/dev`
-- `collector-preprod` suit la branche `preprod` et `collector-prod` suit `main`
+- `collector-dev`, `collector-preprod` et `collector-prod` lisent maintenant leurs manifests sur la branche `main`
 - les overlays `dev`, `preprod` et `prod` n'embarquent plus de secrets versionnes ; cree d'abord les secrets via `npm run k8s:secrets:<env>` en t'appuyant sur [k8s-secrets.env.example](/Users/louiscardon/Documents/Projet/collector/infra/k8s/examples/k8s-secrets.env.example)
 - les scripts npm Argo CD / Minikube utilisent maintenant PowerShell pour etre executables directement sous Windows
 
 ## GitHub Actions + GHCR + Argo CD
 
 Le depot fournit maintenant un flux GitOps complet :
-- [ci.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ci.yml) : qualite, build, publication GHCR et mise a jour des overlays Kustomize sur `develop`, `preprod`, `main`
+- [ci.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ci.yml) : qualite, build, publication GHCR et promotion des overlays Kustomize depuis `main`
 
-Strategie de branche :
-- `develop` -> overlay [dev](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/dev)
-- `preprod` -> overlay [preprod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/preprod)
-- `main` -> overlay [prod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/prod)
+Strategie GitOps :
+- les manifests Argo CD des environnements `dev`, `preprod` et `prod` sont lus depuis la branche `main`
+- un push sur `develop` met a jour l'overlay [dev](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/dev) dans `main`
+- un push sur `preprod` met a jour les overlays [preprod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/preprod) et [dev](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/dev) dans `main`
+- un push sur `main` met a jour les overlays [prod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/prod), [preprod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/preprod) et [dev](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/dev) dans `main`
 
 Cycle de deploiement :
 1. push sur `develop`, `preprod` ou `main`
 2. GitHub Actions build les images concernees et les pousse sur `ghcr.io`
-3. le workflow remplace les tags d'images dans le `kustomization.yaml` de l'overlay cible avec un tag immuable de type `<branche>-<sha>`
-4. Argo CD detecte le commit de manifest et synchronise le cluster
+3. le workflow commit les overlays a promouvoir sur la branche `main` avec un tag immuable de type `<branche>-<sha>`
+4. Argo CD detecte ce commit unique sur `main` et synchronise les environnements concernes
 
 Images publiees :
 - `ghcr.io/louis-cardon/collector-api-gateway`
