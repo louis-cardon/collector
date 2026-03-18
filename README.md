@@ -222,19 +222,20 @@ Le dossier `infra/k8s` deploie maintenant :
 - `notification-service`
 - `postgres`
 
-Pour Minikube :
+Pour Minikube en mode local :
 
 ```bash
 minikube start
 minikube addons enable ingress
 npm run minikube:build-images
-npm run k8s:apply:dev
-kubectl get pods -n collector-dev
+npm run k8s:apply:dev-local
+kubectl get pods -n collector-dev-local
 minikube ip
 ```
 
 Scripts utiles :
-- `npm run minikube:build-images` : build les images directement dans le daemon Docker de Minikube
+- `npm run minikube:build-images` : build les images locales directement dans le daemon Docker de Minikube
+- `npm run k8s:apply:dev-local` : applique l'overlay local Minikube `dev-local`
 - `npm run k8s:apply:dev` : applique l'overlay `dev`
 - `npm run k8s:apply:preprod` : applique l'overlay `preprod`
 - `npm run k8s:apply:prod` : applique l'overlay `prod`
@@ -242,17 +243,19 @@ Scripts utiles :
 Si tu utilises l'ingress Minikube en local, ajoute ensuite une entree `/etc/hosts` avec l'IP retournee par `minikube ip` :
 
 ```text
-<minikube-ip> collector.dev.local
+<minikube-ip> collector.minikube.local
 ```
 
 ## Minikube + Argo CD
 
 Le depot contient maintenant un socle GitOps dans [infra/argocd](/Users/louiscardon/Documents/Projet/collector/infra/argocd) :
-- [project.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/project.yaml) : projet Argo CD autorisant les environnements `dev`, `preprod`, `prod`
+- [project.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/project.yaml) : projet Argo CD autorisant `dev-local`, `dev`, `preprod`, `prod`
+- [apps/collector-dev-local.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/apps/collector-dev-local.yaml) : application Argo pour l'overlay Minikube `dev-local`
 - [apps/collector-dev.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/apps/collector-dev.yaml) : application Argo pour l'overlay `dev`
 - [apps/collector-preprod.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/apps/collector-preprod.yaml) : application Argo pour l'overlay `preprod`
 - [apps/collector-prod.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/apps/collector-prod.yaml) : application Argo pour l'overlay `prod`
-- [root-dev.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/root-dev.yaml) : app-of-apps local leger, recommande sur Minikube
+- [root-dev-local.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/root-dev-local.yaml) : app-of-apps local leger, recommande sur Minikube
+- [root-dev.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/root-dev.yaml) : app-of-apps pour l'environnement `dev` base sur GHCR
 - [root-all-envs.yaml](/Users/louiscardon/Documents/Projet/collector/infra/argocd/root-all-envs.yaml) : app-of-apps pour gerer `dev + preprod + prod`
 
 Flux recommande sur Minikube :
@@ -262,7 +265,7 @@ minikube start
 minikube addons enable ingress
 npm run minikube:build-images
 npm run argocd:install
-npm run argocd:bootstrap:dev
+npm run argocd:bootstrap:dev-local
 kubectl get applications -n argocd
 npm run argocd:password
 npm run argocd:ui
@@ -276,31 +279,36 @@ Ensuite :
 Pour gerer les trois environnements avec Argo CD :
 
 ```bash
+npm run k8s:secrets:dev
+npm run k8s:secrets:preprod
+npm run k8s:secrets:prod
 npm run argocd:bootstrap:all-envs
 ```
 
 Points d'attention :
-- `collector-dev` est le meilleur point de depart sur Minikube ; `preprod` et `prod` consomment davantage de ressources
+- `collector-dev-local` est le meilleur point de depart sur Minikube ; `preprod` et `prod` consomment davantage de ressources
 - les applications Argo CD pointent sur le repo GitHub `https://github.com/louis-cardon/collector.git`
-- `collector-preprod` suit la branche `preprod`, `collector-prod` suit `main`, `collector-dev` suit `develop`
-- les scripts `argocd:bootstrap:*` appliquent les objets Argo CD depuis le workspace local ; le `root app` reste disponible si tu veux ensuite un vrai mode app-of-apps apres push
+- `collector-dev-local` suit aussi `develop`, mais deploie l'overlay local `infra/k8s/overlays/dev-local` avec images Minikube
+- `collector-dev`, `collector-preprod` et `collector-prod` lisent maintenant leurs manifests sur la branche `main`
+- les overlays `dev`, `preprod` et `prod` n'embarquent plus de secrets versionnes ; cree d'abord les secrets via `npm run k8s:secrets:<env>` en t'appuyant sur [k8s-secrets.env.example](/Users/louiscardon/Documents/Projet/collector/infra/k8s/examples/k8s-secrets.env.example)
+- les scripts npm Argo CD / Minikube utilisent maintenant PowerShell pour etre executables directement sous Windows
 
 ## GitHub Actions + GHCR + Argo CD
 
 Le depot fournit maintenant un flux GitOps complet :
-- [ci.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ci.yml) : qualite, build et tests sur `develop`, `preprod`, `main`
-- [ghcr-argocd.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ghcr-argocd.yml) : build/push des images Docker vers GHCR puis mise a jour des tags dans l'overlay Kustomize de la branche
+- [ci.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ci.yml) : qualite, build, publication GHCR et promotion des overlays Kustomize depuis `main`
 
-Strategie de branche :
-- `develop` -> overlay [dev](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/dev)
-- `preprod` -> overlay [preprod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/preprod)
-- `main` -> overlay [prod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/prod)
+Strategie GitOps :
+- les manifests Argo CD des environnements `dev`, `preprod` et `prod` sont lus depuis la branche `main`
+- un push sur `develop` met a jour l'overlay [dev](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/dev) dans `main`
+- un push sur `preprod` met a jour les overlays [preprod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/preprod) et [dev](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/dev) dans `main`
+- un push sur `main` met a jour les overlays [prod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/prod), [preprod](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/preprod) et [dev](/Users/louiscardon/Documents/Projet/collector/infra/k8s/overlays/dev) dans `main`
 
 Cycle de deploiement :
 1. push sur `develop`, `preprod` ou `main`
-2. GitHub Actions build les 7 images et les pousse sur `ghcr.io`
-3. le workflow remplace les tags d'images dans le `kustomization.yaml` de l'overlay cible avec un tag immuable de type `<branche>-<sha>`
-4. Argo CD detecte le commit de manifest et synchronise le cluster
+2. GitHub Actions build les images concernees et les pousse sur `ghcr.io`
+3. le workflow commit les overlays a promouvoir sur la branche `main` avec un tag immuable de type `<branche>-<sha>`
+4. Argo CD detecte ce commit unique sur `main` et synchronise les environnements concernes
 
 Images publiees :
 - `ghcr.io/louis-cardon/collector-api-gateway`
@@ -315,6 +323,7 @@ Configuration GitHub a faire :
 - autoriser les GitHub Actions a lire et ecrire dans le repository
 - laisser `GITHUB_TOKEN` avec permission `packages: write`
 - rendre les packages GHCR publics si tu veux eviter un `imagePullSecret` dans le cluster
+- creer les secrets Kubernetes des environnements `dev`, `preprod`, `prod` hors Git avant le premier sync Argo CD
 
 Verification :
 - apres un push, verifier l'onglet `Actions`

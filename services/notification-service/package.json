@@ -1,6 +1,7 @@
 {
   "name": "notification-service",
   "version": "0.1.0",
+  "description": "Collector.shop notification service",
   "private": true,
   "scripts": {
     "build": "nest build",

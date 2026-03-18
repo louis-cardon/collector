@@ -50,47 +50,31 @@ configMapGenerator:
       - NOTIFICATIONS_FROM_EMAIL=no-reply@collector.local
       - NOTIFICATIONS_TEST_RECIPIENT=
 
-secretGenerator:
-  - name: postgres-secrets
-    literals:
-      - POSTGRES_DB=collector
-      - POSTGRES_USER=collector
-      - POSTGRES_PASSWORD=collector-prod
-  - name: shared-secrets
-    literals:
-      - DATABASE_URL=postgresql://collector:collector-prod@postgres:5432/collector?schema=public
-      - JWT_SECRET=prod-change-me
-      - INTERNAL_SERVICE_TOKEN=internal-change-me
-      - RESEND_API_KEY=disabled
-      - PGDATABASE=collector
-      - PGUSER=collector
-      - PGPASSWORD=collector-prod
-
 generatorOptions:
   disableNameSuffixHash: true
 
 images:
   - name: collector/api-gateway:latest
     newName: ghcr.io/louis-cardon/collector-api-gateway
-    newTag: main-latest
+    newTag: main-def8e745ec64
   - name: collector/auth-service:latest
     newName: ghcr.io/louis-cardon/collector-auth-service
-    newTag: main-latest
+    newTag: main-def8e745ec64
   - name: collector/catalog-service:latest
     newName: ghcr.io/louis-cardon/collector-catalog-service
-    newTag: main-latest
+    newTag: main-def8e745ec64
   - name: collector/article-service:latest
     newName: ghcr.io/louis-cardon/collector-article-service
-    newTag: main-latest
+    newTag: main-def8e745ec64
   - name: collector/audit-service:latest
     newName: ghcr.io/louis-cardon/collector-audit-service
-    newTag: main-latest
+    newTag: main-def8e745ec64
   - name: collector/notification-service:latest
     newName: ghcr.io/louis-cardon/collector-notification-service
-    newTag: main-latest
+    newTag: main-def8e745ec64
   - name: collector/frontend:latest
     newName: ghcr.io/louis-cardon/collector-frontend
-    newTag: main-latest
+    newTag: main-def8e745ec64
 
 patches:
   - path: patch-scale.yaml

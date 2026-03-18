@@ -16,31 +16,30 @@ SERVICES = [
 
 
 def main() -> int:
-    if len(sys.argv) != 5:
+    if len(sys.argv) < 4:
         raise SystemExit(
-            "usage: update_kustomize_images.py <overlay-file> <ghcr-owner> <tag> <latest-tag>"
+            "usage: update_kustomize_images.py <ghcr-owner> <tag> <overlay-file> [<overlay-file>...]"
         )
 
-    overlay_file = Path(sys.argv[1])
-    ghcr_owner = sys.argv[2]
-    tag = sys.argv[3]
-    latest_tag = sys.argv[4]
+    ghcr_owner = sys.argv[1]
+    tag = sys.argv[2]
+    overlay_files = [Path(argument) for argument in sys.argv[3:]]
 
-    text = overlay_file.read_text()
+    for overlay_file in overlay_files:
+        text = overlay_file.read_text()
 
-    for _, image_name in SERVICES:
-        text = replace_tag(
-            text,
-            f"newName: ghcr.io/{ghcr_owner}/{image_name}",
-            tag,
-            latest_tag,
-        )
+        for _, image_name in SERVICES:
+            text = replace_tag(
+                text,
+                f"newName: ghcr.io/{ghcr_owner}/{image_name}",
+                tag,
+            )
 
-    overlay_file.write_text(text)
+        overlay_file.write_text(text)
     return 0
 
 
-def replace_tag(text: str, marker: str, tag: str, latest_tag: str) -> str:
+def replace_tag(text: str, marker: str, tag: str) -> str:
     marker_index = text.find(marker)
     if marker_index == -1:
         raise ValueError(f"missing image marker: {marker}")
@@ -58,15 +57,6 @@ def replace_tag(text: str, marker: str, tag: str, latest_tag: str) -> str:
     expected_prefix = "    newTag: "
     if not current_line.startswith(expected_prefix):
         raise ValueError(f"unexpected tag line after marker {marker}: {current_line}")
-
-    current_tag = current_line[len(expected_prefix) :]
-    branch_prefix = latest_tag[: -len("latest")]
-    if current_tag != latest_tag and not current_tag.startswith(branch_prefix):
-        # Preserve manual deviations by requiring the file to stay on the same branch namespace.
-        raise ValueError(
-            f"unexpected current tag for {marker}: {current_tag} "
-            f"(expected {latest_tag} or any tag starting with {branch_prefix})"
-        )
 
     return f"{text[:tag_start]}{expected_prefix}{tag}{text[tag_end:]}"
 

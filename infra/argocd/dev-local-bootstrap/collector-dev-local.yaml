@@ -1,18 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: collector-root-all-envs
+  name: collector-dev-local
   namespace: argocd
 spec:
-  project: default
+  project: collector
   source:
     repoURL: https://github.com/louis-cardon/collector.git
-    targetRevision: main
-    path: infra/argocd/all-envs-bootstrap
+    targetRevision: develop
+    path: infra/k8s/overlays/dev-local
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: collector-dev-local
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

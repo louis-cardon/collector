@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: collector-preprod
+namespace: collector-dev-local
 
 resources:
   - namespace.yaml
@@ -14,8 +14,8 @@ configMapGenerator:
   - name: api-gateway-config
     literals:
       - PORT=3001
-      - LOG_LEVEL=info
-      - CORS_ALLOWED_ORIGINS=https://collector-preprod.local
+      - LOG_LEVEL=debug
+      - CORS_ALLOWED_ORIGINS=http://collector.minikube.local,http://localhost:3000,http://127.0.0.1:3000
       - AUTH_SERVICE_URL=http://auth-service:3002
       - CATALOG_SERVICE_URL=http://catalog-service:3003
       - ARTICLE_SERVICE_URL=http://article-service:3004
@@ -23,59 +23,52 @@ configMapGenerator:
   - name: auth-service-config
     literals:
       - PORT=3002
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug
       - JWT_EXPIRES_IN=1h
       - AUDIT_SERVICE_URL=http://audit-service:3005
   - name: catalog-service-config
     literals:
       - PORT=3003
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug
       - AUDIT_SERVICE_URL=http://audit-service:3005
   - name: article-service-config
     literals:
       - PORT=3004
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug
       - AUDIT_SERVICE_URL=http://audit-service:3005
       - NOTIFICATION_SERVICE_URL=http://notification-service:3006
   - name: audit-service-config
     literals:
       - PORT=3005
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug
   - name: notification-service-config
     literals:
       - PORT=3006
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug
       - AUTH_SERVICE_URL=http://auth-service:3002
       - NOTIFICATIONS_PROVIDER=logger
-      - NOTIFICATIONS_FROM_EMAIL=no-reply@collector.preprod.local
+      - NOTIFICATIONS_FROM_EMAIL=no-reply@collector.minikube.local
       - NOTIFICATIONS_TEST_RECIPIENT=
+
+secretGenerator:
+  - name: postgres-secrets
+    literals:
+      - POSTGRES_DB=collector
+      - POSTGRES_USER=collector
+      - POSTGRES_PASSWORD=collector
+  - name: shared-secrets
+    literals:
+      - DATABASE_URL=postgresql://collector:collector@postgres:5432/collector?schema=public
+      - JWT_SECRET=dev-local-change-me
+      - INTERNAL_SERVICE_TOKEN=dev-local-internal-token
+      - RESEND_API_KEY=disabled
+      - PGDATABASE=collector
+      - PGUSER=collector
+      - PGPASSWORD=collector
 
 generatorOptions:
   disableNameSuffixHash: true
 
-images:
-  - name: collector/api-gateway:latest
-    newName: ghcr.io/louis-cardon/collector-api-gateway
-    newTag: main-def8e745ec64
-  - name: collector/auth-service:latest
-    newName: ghcr.io/louis-cardon/collector-auth-service
-    newTag: main-def8e745ec64
-  - name: collector/catalog-service:latest
-    newName: ghcr.io/louis-cardon/collector-catalog-service
-    newTag: main-def8e745ec64
-  - name: collector/article-service:latest
-    newName: ghcr.io/louis-cardon/collector-article-service
-    newTag: main-def8e745ec64
-  - name: collector/audit-service:latest
-    newName: ghcr.io/louis-cardon/collector-audit-service
-    newTag: main-def8e745ec64
-  - name: collector/notification-service:latest
-    newName: ghcr.io/louis-cardon/collector-notification-service
-    newTag: main-def8e745ec64
-  - name: collector/frontend:latest
-    newName: ghcr.io/louis-cardon/collector-frontend
-    newTag: main-def8e745ec64
-
 patches:
-  - path: patch-scale.yaml
+  - path: patch-image-pull.yaml
   - path: patch-ingress.yaml

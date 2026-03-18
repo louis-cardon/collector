@@ -742,16 +742,17 @@ Le pipeline CI/CD proposé permet :
 Le deploiement Kubernetes est maintenant aligne sur un flux GitOps simple :
 - GitHub Actions construit les images Docker de `frontend` et `services/*`
 - les images sont publiees sur `ghcr.io`
-- le workflow met a jour l'overlay Kustomize correspondant a la branche (`dev`, `preprod`, `prod`)
-- Argo CD detecte ce commit et synchronise le cluster
+- le workflow met a jour les overlays Kustomize a promouvoir sur la branche GitOps `main`
+- Argo CD detecte ce commit unique sur `main` et synchronise le cluster
 
-Correspondance de branches :
+Regles de promotion :
 - `develop` -> `infra/k8s/overlays/dev`
-- `preprod` -> `infra/k8s/overlays/preprod`
-- `main` -> `infra/k8s/overlays/prod`
+- `preprod` -> `infra/k8s/overlays/preprod` et `infra/k8s/overlays/dev`
+- `main` -> `infra/k8s/overlays/prod`, `infra/k8s/overlays/preprod` et `infra/k8s/overlays/dev`
 
 Le workflow concerne :
-- [ghcr-argocd.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ghcr-argocd.yml)
+- [ci.yml](/Users/louiscardon/Documents/Projet/collector/.github/workflows/ci.yml)
 
 Hypothese retenue :
 - packages GHCR publics pour eviter l'ajout d'un `imagePullSecret` dans le cluster
+- secrets Kubernetes `dev`, `preprod` et `prod` crees hors depot ; seul l'overlay `dev-local` garde des valeurs de demonstration pour Minikube

@@ -1,12 +1,23 @@
 $ErrorActionPreference = "Stop"
 
-$dockerEnv = (minikube -p minikube docker-env --shell powershell) -join [Environment]::NewLine
+$dockerEnv = (minikube -p minikube docker-env --shell powershell | Out-String).Trim()
+if ([string]::IsNullOrWhiteSpace($dockerEnv)) {
+  throw "Unable to resolve the Minikube Docker environment."
+}
+
 Invoke-Expression $dockerEnv
 
-docker build -f services/api-gateway/Dockerfile -t collector/api-gateway:latest .
-docker build -f services/auth-service/Dockerfile -t collector/auth-service:latest .
-docker build -f services/catalog-service/Dockerfile -t collector/catalog-service:latest .
-docker build -f services/article-service/Dockerfile -t collector/article-service:latest .
-docker build -f services/audit-service/Dockerfile -t collector/audit-service:latest .
-docker build -f services/notification-service/Dockerfile -t collector/notification-service:latest .
-docker build -f frontend/Dockerfile -t collector/frontend:latest .
+$images = @(
+  @{ Name = "collector/api-gateway:latest"; Dockerfile = "services/api-gateway/Dockerfile" },
+  @{ Name = "collector/auth-service:latest"; Dockerfile = "services/auth-service/Dockerfile" },
+  @{ Name = "collector/catalog-service:latest"; Dockerfile = "services/catalog-service/Dockerfile" },
+  @{ Name = "collector/article-service:latest"; Dockerfile = "services/article-service/Dockerfile" },
+  @{ Name = "collector/audit-service:latest"; Dockerfile = "services/audit-service/Dockerfile" },
+  @{ Name = "collector/notification-service:latest"; Dockerfile = "services/notification-service/Dockerfile" },
+  @{ Name = "collector/frontend:latest"; Dockerfile = "frontend/Dockerfile" }
+)
+
+foreach ($image in $images) {
+  Write-Host "Building $($image.Name) in Minikube..."
+  docker build -f $image.Dockerfile -t $image.Name .
+}
