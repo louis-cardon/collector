@@ -50,7 +50,11 @@
     "argocd:bootstrap:dev": "powershell -ExecutionPolicy Bypass -File scripts\\argocd\\bootstrap-dev.ps1",
     "argocd:bootstrap:all-envs": "powershell -ExecutionPolicy Bypass -File scripts\\argocd\\bootstrap-all-envs.ps1",
     "argocd:ui": "powershell -ExecutionPolicy Bypass -File scripts\\argocd\\open-ui.ps1",
-    "argocd:password": "powershell -ExecutionPolicy Bypass -File scripts\\argocd\\get-admin-password.ps1"
+    "argocd:password": "powershell -ExecutionPolicy Bypass -File scripts\\argocd\\get-admin-password.ps1",
+    "demo:local:start": "powershell -ExecutionPolicy Bypass -File scripts\\demo\\start-local.ps1",
+    "demo:local:stop": "powershell -ExecutionPolicy Bypass -File scripts\\demo\\stop-local.ps1",
+    "grafana:local:start": "powershell -ExecutionPolicy Bypass -File scripts\\grafana\\start-local.ps1",
+    "grafana:local:stop": "powershell -ExecutionPolicy Bypass -File scripts\\grafana\\stop-local.ps1"
   },
   "devDependencies": {
     "autocannon": "^8.0.0",
