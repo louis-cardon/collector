@@ -1,12 +1,13 @@
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet("dev", "preprod", "prod")]
+  [ValidateSet("dev-local", "dev", "preprod", "prod")]
   [string]$Environment
 )
 
 $ErrorActionPreference = "Stop"
 
 $namespaceByEnvironment = @{
+  "dev-local" = "collector-dev-local"
   dev = "collector-dev"
   preprod = "collector-preprod"
   prod = "collector-prod"
@@ -20,7 +21,7 @@ if (Test-Path $envFile) {
     if (-not [string]::IsNullOrWhiteSpace($_) -and -not $_.TrimStart().StartsWith("#")) {
       $parts = $_ -split "=", 2
       if ($parts.Count -ne 2) {
-        throw "Invalid line in $envFile: $_"
+        throw "Invalid line in ${envFile}: $_"
       }
 
       [System.Environment]::SetEnvironmentVariable($parts[0], $parts[1], "Process")
@@ -61,7 +62,7 @@ $resendApiKey = Get-Value -Name "RESEND_API_KEY" -DefaultValue "disabled"
 $pgDatabase = Get-Value -Name "PGDATABASE" -DefaultValue $postgresDb
 $pgUser = Get-Value -Name "PGUSER" -DefaultValue $postgresUser
 $pgPassword = Get-Value -Name "PGPASSWORD" -DefaultValue $postgresPassword
-$databaseUrl = Get-Value -Name "DATABASE_URL" -DefaultValue "postgresql://$postgresUser:$postgresPassword@postgres:5432/$postgresDb?schema=public"
+$databaseUrl = Get-Value -Name "DATABASE_URL" -DefaultValue "postgresql://${postgresUser}:${postgresPassword}@postgres:5432/${postgresDb}?schema=public"
 
 kubectl create namespace $namespace --dry-run=client -o yaml | kubectl apply -f -
 

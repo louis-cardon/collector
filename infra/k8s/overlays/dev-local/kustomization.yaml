@@ -46,9 +46,9 @@ configMapGenerator:
       - PORT=3006
       - LOG_LEVEL=debug
       - AUTH_SERVICE_URL=http://auth-service:3002
-      - NOTIFICATIONS_PROVIDER=logger
-      - NOTIFICATIONS_FROM_EMAIL=no-reply@collector.minikube.local
-      - NOTIFICATIONS_TEST_RECIPIENT=
+      - NOTIFICATIONS_PROVIDER=resend
+      - NOTIFICATIONS_FROM_EMAIL=Acme <onboarding@resend.dev>
+      - NOTIFICATIONS_TEST_RECIPIENT=cardonlouis27@gmail.com
 
 secretGenerator:
   - name: postgres-secrets
