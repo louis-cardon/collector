@@ -1,79 +1,104 @@
 # Load Tests Autocannon
 
-Workflow dedié : `.github/workflows/load-test.yml`
+Workflow dedie : `.github/workflows/load-test.yml`
 
 ## Objectif
 
-Ce workflow lance des tests de charge HTTP simples contre l'API déployée sur Render, sans alourdir la CI principale.
+Ce socle lance des tests de charge HTTP simples via `autocannon`, en local ou dans GitHub Actions, sans alourdir la CI principale.
 
-Scenarios couverts :
+Scenarios unitaires :
 - `catalog` : `GET /catalog`
+- `categories` : `GET /categories`
 - `login` : `POST /auth/login`
+- `auth-me` : `GET /auth/me`
+- `admin-pending` : `GET /admin/articles/pending`
+- `article-create` : `POST /articles`
 
-Le workflow est prévu pour la soutenance :
-- declenchement manuel avec `workflow_dispatch`
-- petite execution planifiee quotidienne
-- artefacts JSON exploitables
-- resume Markdown lisible dans GitHub Actions
+Groupes disponibles :
+- `public` : `catalog`, `categories`
+- `auth` : `login`, `auth-me`
+- `all` : `catalog`, `categories`, `login`, `auth-me`
+- `seller-flow` : `login`, `auth-me`, `article-create`
+- `admin` : `admin-pending`
+- `full` : tous les scenarios ci-dessus
 
-## Secrets GitHub requis
+## Variables utiles
 
-- `LOADTEST_BASE_URL` : URL de base de l'API, par exemple `https://collector-api-f9xu.onrender.com`
-- `LOADTEST_USER_EMAIL` : compte de test valide pour le scenario `login`
-- `LOADTEST_USER_PASSWORD` : mot de passe du compte de test
+- `LOADTEST_BASE_URL` : URL de base de l'API
+- `LOADTEST_USER_EMAIL` et `LOADTEST_USER_PASSWORD` : alias vendeur conserves pour compatibilite
+- `LOADTEST_SELLER_EMAIL` et `LOADTEST_SELLER_PASSWORD` : vendeur pour `login`, `auth-me`, `article-create`
+- `LOADTEST_ADMIN_EMAIL` et `LOADTEST_ADMIN_PASSWORD` : admin pour `admin-pending`
+- `LOADTEST_CATEGORY_ID` : optionnel, pour forcer la categorie utilisee par `article-create`
 
-## Lancer le workflow manuellement
+Exemple fourni :
+- [loadtest.env.example](/c:/Users/cardo/Documents/Projet/collector/scripts/load-tests/loadtest.env.example)
 
-1. Ouvrir `Actions` dans GitHub.
-2. Selectionner le workflow `load-test`.
-3. Cliquer sur `Run workflow`.
-4. Choisir :
-   - `target` : `catalog`, `login` ou `all`
-   - `duration` : duree en secondes pour chaque run
-   - `connections` : nombre de connexions concurrentes
+## Rejouer en local
 
-Le `schedule` quotidien reste leger :
-- cible : `catalog`
-- duree : `10` secondes
-- connexions : `5`
+Pour la demo Minikube + ingress, la bonne cible est :
 
-## Recuperer les artifacts
+```text
+http://localhost:8088/api
+```
 
-1. Ouvrir le run GitHub Actions.
-2. Aller dans la section `Artifacts`.
-3. Telecharger `load-test-results-<run_id>`.
+Campagne lecture seule :
 
-Le dossier contient :
-- `catalog.json` et/ou `login.json`
-- `summary.md`
+```bash
+npm run loadtest -- --target all --base-url http://localhost:8088/api --duration 15 --connections 10
+```
+
+Campagne seller avec ecriture :
+
+```bash
+npm run loadtest -- --target seller-flow --base-url http://localhost:8088/api --duration 15 --connections 10
+```
+
+Campagne complete :
+
+```bash
+npm run loadtest -- --target full --base-url http://localhost:8088/api --duration 15 --connections 10
+```
+
+Scenarios individuels :
+
+```bash
+npm run loadtest:catalog -- --base-url http://localhost:8088/api
+npm run loadtest:categories -- --base-url http://localhost:8088/api
+npm run loadtest:login -- --base-url http://localhost:8088/api
+npm run loadtest:auth-me -- --base-url http://localhost:8088/api
+npm run loadtest:admin-pending -- --base-url http://localhost:8088/api
+npm run loadtest:article-create -- --base-url http://localhost:8088/api
+```
+
+Resume Markdown :
+
+```bash
+npm run loadtest:summary
+```
+
+## Recommande pour la demo locale
+
+1. lancer `npm run demo:local:start`
+2. charger les variables depuis `loadtest.env.example`
+3. lancer `npm run loadtest -- --target all --base-url http://localhost:8088/api`
+4. si tu veux montrer un flux plus metier, lancer `seller-flow` ou `full`
+5. ouvrir ensuite `load-test-results/summary.md`
+
+## Effets de bord a connaitre
+
+- `article-create` ecrit en base et cree de vraies annonces `PENDING_REVIEW`
+- `admin-pending` necessite un compte admin valide
+- `full` lance aussi des scenarios authentifies
 
 ## Lecture rapide des resultats
 
 - `Requests` : nombre total de requetes traitees pendant le test
 - `Avg latency` : latence moyenne en millisecondes
-- `P95` : latence du 95e percentile, utile pour les pics
-- `Errors` : erreurs transport/runtime detectees par autocannon
+- `P95` : latence du 95e percentile
+- `Errors` : erreurs transport ou runtime detectees par `autocannon`
 - `Non-2xx` : reponses HTTP hors succes
 
 Pour une API saine :
 - `Errors` doit rester a `0`
 - `Non-2xx` doit rester a `0` ou proche de `0`
 - `P95` doit rester raisonnable par rapport a la moyenne
-
-## Rejouer en local
-
-Scripts racine disponibles :
-
-```bash
-npm run loadtest -- --target catalog --base-url https://collector-api-f9xu.onrender.com --duration 15 --connections 10
-npm run loadtest -- --target login --base-url https://collector-api-f9xu.onrender.com --duration 15 --connections 10
-npm run loadtest:summary
-```
-
-Variables utiles pour `login` :
-
-```bash
-LOADTEST_BASE_URL=https://collector-api-f9xu.onrender.com
-LOADTEST_USER_EMAIL=seller@collector.local
-LOADTEST_USER_PASSWORD=Seller123!
-```

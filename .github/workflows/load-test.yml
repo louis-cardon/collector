@@ -11,7 +11,15 @@ on:
         options:
           - all
           - catalog
+          - categories
           - login
+          - auth
+          - auth-me
+          - seller-flow
+          - article-create
+          - admin
+          - admin-pending
+          - full
       duration:
         description: "Duration in seconds for each autocannon run"
         required: false
@@ -39,6 +47,11 @@ jobs:
       LOADTEST_BASE_URL: ${{ secrets.LOADTEST_BASE_URL }}
       LOADTEST_USER_EMAIL: ${{ secrets.LOADTEST_USER_EMAIL }}
       LOADTEST_USER_PASSWORD: ${{ secrets.LOADTEST_USER_PASSWORD }}
+      LOADTEST_SELLER_EMAIL: ${{ secrets.LOADTEST_SELLER_EMAIL }}
+      LOADTEST_SELLER_PASSWORD: ${{ secrets.LOADTEST_SELLER_PASSWORD }}
+      LOADTEST_ADMIN_EMAIL: ${{ secrets.LOADTEST_ADMIN_EMAIL }}
+      LOADTEST_ADMIN_PASSWORD: ${{ secrets.LOADTEST_ADMIN_PASSWORD }}
+      LOADTEST_CATEGORY_ID: ${{ secrets.LOADTEST_CATEGORY_ID }}
 
     steps:
       - name: Checkout
@@ -60,14 +73,6 @@ jobs:
             echo "Missing LOADTEST_BASE_URL secret."
             exit 1
           fi
-          if [ -z "${LOADTEST_USER_EMAIL:-}" ]; then
-            echo "Missing LOADTEST_USER_EMAIL secret."
-            exit 1
-          fi
-          if [ -z "${LOADTEST_USER_PASSWORD:-}" ]; then
-            echo "Missing LOADTEST_USER_PASSWORD secret."
-            exit 1
-          fi
 
       - name: Resolve run parameters
         run: |
@@ -81,26 +86,54 @@ jobs:
             echo "LOADTEST_CONNECTIONS=${{ github.event.inputs.connections || '10' }}" >> "$GITHUB_ENV"
           fi
 
+      - name: Validate scenario credentials
+        run: |
+          set -euo pipefail
+          target="${LOADTEST_TARGET}"
+
+          seller_email="${LOADTEST_SELLER_EMAIL:-${LOADTEST_USER_EMAIL:-}}"
+          seller_password="${LOADTEST_SELLER_PASSWORD:-${LOADTEST_USER_PASSWORD:-}}"
+
+          requires_seller="false"
+          requires_admin="false"
+
+          case "$target" in
+            login|auth|auth-me|seller-flow|article-create|all|full)
+              requires_seller="true"
+              ;;
+          esac
+
+          case "$target" in
+            admin|admin-pending|full)
+              requires_admin="true"
+              ;;
+          esac
+
+          if [ "$requires_seller" = "true" ]; then
+            if [ -z "${seller_email}" ] || [ -z "${seller_password}" ]; then
+              echo "Missing seller credentials for target ${target}."
+              exit 1
+            fi
+          fi
+
+          if [ "$requires_admin" = "true" ]; then
+            if [ -z "${LOADTEST_ADMIN_EMAIL:-}" ] || [ -z "${LOADTEST_ADMIN_PASSWORD:-}" ]; then
+              echo "Missing admin credentials for target ${target}."
+              exit 1
+            fi
+          fi
+
       - name: Prepare results directory
         run: mkdir -p load-test-results
 
-      - name: Run catalog scenario
-        if: env.LOADTEST_TARGET == 'catalog' || env.LOADTEST_TARGET == 'all'
+      - name: Run autocannon scenario or group
         run: |
           npm run loadtest -- \
-            --target catalog \
+            --target "$LOADTEST_TARGET" \
             --duration "$LOADTEST_DURATION" \
             --connections "$LOADTEST_CONNECTIONS" \
-            --output load-test-results/catalog.json
-
-      - name: Run login scenario
-        if: env.LOADTEST_TARGET == 'login' || env.LOADTEST_TARGET == 'all'
-        run: |
-          npm run loadtest -- \
-            --target login \
-            --duration "$LOADTEST_DURATION" \
-            --connections "$LOADTEST_CONNECTIONS" \
-            --output load-test-results/login.json
+            --output load-test-results \
+            --summary-output load-test-results/summary.md
 
       - name: Build markdown summary
         run: |

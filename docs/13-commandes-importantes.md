@@ -79,6 +79,26 @@ Lancer les e2e Playwright :
 npm run test:e2e
 ```
 
+## Tests de charge
+
+Campagne lecture seule :
+
+```bash
+npm run loadtest -- --target all --base-url http://localhost:8088/api --duration 15 --connections 10
+```
+
+Campagne complete :
+
+```bash
+npm run loadtest -- --target full --base-url http://localhost:8088/api --duration 15 --connections 10
+```
+
+Resume Markdown :
+
+```bash
+npm run loadtest:summary
+```
+
 Lancer les e2e backend historiques :
 
 ```bash

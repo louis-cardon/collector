@@ -1,5 +1,6 @@
 param(
   [int]$AppPort = 8088,
+  [int]$ArgoCdPort = 8080,
   [int]$GrafanaPort = 3007,
   [string]$IngressNamespace = "ingress-nginx",
   [string]$IngressService = "ingress-nginx-controller",
@@ -102,6 +103,8 @@ $tmpDir = Join-Path $repoRoot "tmp"
 $stateFile = Join-Path $tmpDir "demo-local-state.json"
 $ingressStdoutLog = Join-Path $tmpDir "demo-ingress-port-forward.out.log"
 $ingressStderrLog = Join-Path $tmpDir "demo-ingress-port-forward.err.log"
+$argocdStdoutLog = Join-Path $tmpDir "demo-argocd-port-forward.out.log"
+$argocdStderrLog = Join-Path $tmpDir "demo-argocd-port-forward.err.log"
 
 New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
 
@@ -133,7 +136,11 @@ if (-not $argocdNamespaceExists) {
   & (Join-Path $repoRoot "scripts\argocd\install.ps1")
 }
 
+& (Join-Path $repoRoot "scripts\argocd\patch-repo-server.ps1")
+
 kubectl rollout status deployment/argocd-server -n argocd --timeout=180s | Out-Null
+kubectl rollout restart deployment/argocd-repo-server -n argocd | Out-Null
+kubectl rollout status deployment/argocd-repo-server -n argocd --timeout=180s | Out-Null
 & (Join-Path $repoRoot "scripts\argocd\bootstrap-dev-local.ps1")
 kubectl annotate application collector-dev-local -n argocd argocd.argoproj.io/refresh=hard --overwrite | Out-Null
 
@@ -160,12 +167,34 @@ if ($existingIngressProcess) {
     -StderrLog $ingressStderrLog
 }
 
+$existingArgoCdProcess = Get-CimInstance Win32_Process |
+  Where-Object {
+    $_.Name -eq "kubectl.exe" -and
+    $_.CommandLine -match "port-forward" -and
+    $_.CommandLine -match "svc/argocd-server" -and
+    $_.CommandLine -match "${ArgoCdPort}:443"
+  } |
+  Select-Object -First 1
+
+if ($existingArgoCdProcess) {
+  $argocdProcess = Get-Process -Id $existingArgoCdProcess.ProcessId -ErrorAction Stop
+} else {
+  $argocdProcess = Start-PortForward `
+    -Namespace "argocd" `
+    -Target "svc/argocd-server" `
+    -LocalPortMapping "${ArgoCdPort}:443" `
+    -StdoutLog $argocdStdoutLog `
+    -StderrLog $argocdStderrLog
+}
+
 & (Join-Path $repoRoot "scripts\grafana\start-local.ps1") -GrafanaPort $GrafanaPort
 
 @{
   appPort = $AppPort
+  argocdPort = $ArgoCdPort
   grafanaPort = $GrafanaPort
   ingressPortForwardPid = $ingressProcess.Id
+  argocdPortForwardPid = $argocdProcess.Id
 } | ConvertTo-Json | Set-Content -Path $stateFile
 
 Wait-ForHttp -Url "http://localhost:${AppPort}"
@@ -174,4 +203,5 @@ Wait-ForHttp -Url "http://localhost:${AppPort}/docs"
 Write-Host "Demo local ready."
 Write-Host "App: http://localhost:${AppPort}"
 Write-Host "Swagger: http://localhost:${AppPort}/docs"
+Write-Host "Argo CD: https://localhost:${ArgoCdPort}"
 Write-Host "Grafana: http://localhost:${GrafanaPort}/d/collector-audit-local/collector-audit-local"
